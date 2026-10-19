@@ -1,0 +1,327 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Personal Study Workspace</title>
+  
+  <!-- PWA Metadata -->
+  <meta name="theme-color" content="#10b981">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  
+  <!-- Tailwind CSS & Lucide Icons -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://unpkg.com/lucide@latest"></script>
+  
+  <!-- Supabase JS Client -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            brand: {
+              50: '#ecfdf5',
+              100: '#d1fae5',
+              500: '#10b981',
+              600: '#059669',
+              700: '#047857',
+            }
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    /* Custom scrollbar and Canvas styling */
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+    .dark ::-webkit-scrollbar-thumb { background: #334155; }
+    canvas { touch-action: none; }
+  </style>
+</head>
+<body class="bg-slate-50 dark:bg-zinc-950 text-slate-900 dark:text-zinc-100 font-sans antialiased min-h-screen flex flex-col md:flex-row">
+
+  <!-- Mobile Header -->
+  <header class="md:hidden flex items-center justify-between p-4 bg-white dark:bg-zinc-900 border-b border-slate-200 dark:border-zinc-800 sticky top-0 z-50">
+    <div class="flex items-center gap-2 font-bold text-emerald-600 dark:text-emerald-400">
+      <i data-lucide="book-open" class="w-6 h-6"></i>
+      <span>StudyWorkspace</span>
+    </div>
+    <button id="mobile-menu-btn" class="p-2 text-slate-600 dark:text-zinc-300">
+      <i data-lucide="menu" class="w-6 h-6"></i>
+    </button>
+  </header>
+
+  <!-- Navigation Sidebar -->
+  <aside id="sidebar" class="fixed inset-y-0 left-0 z-40 w-64 bg-white dark:bg-zinc-900 border-r border-slate-200 dark:border-zinc-800 transform -translate-x-full md:translate-x-0 transition-transform duration-200 ease-in-out md:static flex flex-col justify-between p-5">
+    <div>
+      <div class="hidden md:flex items-center gap-3 font-bold text-xl text-emerald-600 dark:text-emerald-400 mb-8">
+        <i data-lucide="book-open" class="w-7 h-7"></i>
+        <span>Study Workspace</span>
+      </div>
+
+      <!-- Navigation Tabs -->
+      <nav class="space-y-1.5">
+        <button onclick="switchTab('notes')" id="nav-notes" class="nav-btn w-full flex items-center gap-3 px-3.5 py-2.5 rounded-lg text-sm font-medium bg-emerald-50 text-emerald-600 dark:bg-emerald-950/50 dark:text-emerald-400">
+          <i data-lucide="file-text" class="w-5 h-5"></i>
+          <span>Catatan & Modul</span>
+        </button>
+        <button onclick="switchTab('mindmap')" id="nav-mindmap" class="nav-btn w-full flex items-center gap-3 px-3.5 py-2.5 rounded-lg text-sm font-medium text-slate-600 dark:text-zinc-400 hover:bg-slate-100 dark:hover:bg-zinc-800/60">
+          <i data-lucide="git-fork" class="w-5 h-5"></i>
+          <span>Mind Map</span>
+        </button>
+        <button onclick="switchTab('memorize')" id="nav-memorize" class="nav-btn w-full flex items-center gap-3 px-3.5 py-2.5 rounded-lg text-sm font-medium text-slate-600 dark:text-zinc-400 hover:bg-slate-100 dark:hover:bg-zinc-800/60">
+          <i data-lucide="brain" class="w-5 h-5"></i>
+          <span>Mode Hafalan</span>
+        </button>
+        <button onclick="switchTab('flashcards')" id="nav-flashcards" class="nav-btn w-full flex items-center gap-3 px-3.5 py-2.5 rounded-lg text-sm font-medium text-slate-600 dark:text-zinc-400 hover:bg-slate-100 dark:hover:bg-zinc-800/60">
+          <i data-lucide="layers" class="w-5 h-5"></i>
+          <span>Flashcard Review</span>
+        </button>
+      </nav>
+    </div>
+
+    <!-- Sync & Status -->
+    <div class="pt-4 border-t border-slate-200 dark:border-zinc-800 space-y-3">
+      <div class="flex items-center justify-between text-xs text-slate-500">
+        <span>Status Cloud:</span>
+        <span id="sync-status" class="text-emerald-600 font-semibold">Lokal (Offline)</span>
+      </div>
+      <button onclick="toggleDarkMode()" class="w-full flex items-center gap-2 px-3 py-2 text-xs text-slate-600 dark:text-zinc-300 hover:bg-slate-100 dark:hover:bg-zinc-800 rounded-md">
+        <i data-lucide="moon" class="w-4 h-4"></i>
+        <span>Ganti Mode Gelap/Terang</span>
+      </button>
+    </div>
+  </aside>
+
+  <!-- Main Content Area -->
+  <main class="flex-1 p-4 md:p-8 max-w-6xl mx-auto w-full overflow-y-auto">
+
+    <!-- 1. CATATAN & MODUL HIRARKIS -->
+    <section id="tab-notes" class="tab-content space-y-6">
+      <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+          <h1 class="text-2xl font-bold">Catatan & Modul Belajar</h1>
+          <p class="text-sm text-slate-500">Kelola sub-bab dan materi terstruktur dengan fitur lipat (collapse).</p>
+        </div>
+        <button onclick="addNewNote()" class="flex items-center gap-2 px-4 py-2 bg-emerald-600 text-white rounded-lg text-sm font-medium hover:bg-emerald-700 transition">
+          <i data-lucide="plus" class="w-4 h-4"></i>
+          <span>Tambah Modul</span>
+        </button>
+      </div>
+
+      <!-- Search Bar -->
+      <div class="relative">
+        <i data-lucide="search" class="w-5 h-5 absolute left-3 top-3 text-slate-400"></i>
+        <input type="text" id="global-search" onkeyup="filterNotes()" placeholder="Cari dalam semua modul & sub-bab (termasuk yang terlipat)..." class="w-full pl-10 pr-4 py-2.5 bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500">
+      </div>
+
+      <!-- Notes Tree List -->
+      <div id="notes-tree" class="space-y-3">
+        <!-- Dynamic content filled by JavaScript -->
+      </div>
+    </section>
+
+    <!-- 2. INTERACTIVE MIND MAP CANVAS -->
+    <section id="tab-mindmap" class="tab-content hidden space-y-4">
+      <div class="flex items-center justify-between">
+        <div>
+          <h1 class="text-2xl font-bold">Mind Map Interaktif</h1>
+          <p class="text-sm text-slate-500">Visualisasikan hubungan antarkonsep.</p>
+        </div>
+        <button onclick="addMindMapNode()" class="flex items-center gap-2 px-3.5 py-2 bg-emerald-600 text-white rounded-lg text-sm font-medium">
+          <i data-lucide="plus-circle" class="w-4 h-4"></i>
+          <span>Tambah Node</span>
+        </button>
+      </div>
+      <div class="relative w-full h-[500px] bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 rounded-2xl overflow-hidden shadow-inner">
+        <canvas id="mindmap-canvas" class="w-full h-full cursor-grab active:cursor-grabbing"></canvas>
+      </div>
+    </section>
+
+    <!-- 3. MODE HAFALAN (CLOZE DELETION) -->
+    <section id="tab-memorize" class="tab-content hidden space-y-6">
+      <div>
+        <h1 class="text-2xl font-bold">Mode Hafalan (Hide & Reveal)</h1>
+        <p class="text-sm text-slate-500">Uji ingatan Anda tanpa mengubah isi catatan asli.</p>
+      </div>
+      <div class="p-6 bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 rounded-2xl space-y-4">
+        <h3 class="font-semibold text-lg text-emerald-600">Latihan Isian Singkat (Cloze Deletion)</h3>
+        <p class="text-sm leading-relaxed text-slate-700 dark:text-zinc-300">
+          "Penerapan Enterprise Risk Management mencakup 3 indikator utama yaitu 
+          <span onclick="this.innerText='RCSA (Risk & Control Self Assessment)'; this.classList.remove('bg-slate-300', 'dark:bg-zinc-700');" class="bg-slate-300 dark:bg-zinc-700 text-transparent rounded px-2 py-0.5 cursor-pointer select-none transition">RCSA (Risk & Control Self Assessment)</span>, 
+          <span onclick="this.innerText='KRI (Key Risk Indicator)'; this.classList.remove('bg-slate-300', 'dark:bg-zinc-700');" class="bg-slate-300 dark:bg-zinc-700 text-transparent rounded px-2 py-0.5 cursor-pointer select-none transition">KRI (Key Risk Indicator)</span>, dan 
+          <span onclick="this.innerText='LED (Loss Event Database)'; this.classList.remove('bg-slate-300', 'dark:bg-zinc-700');" class="bg-slate-300 dark:bg-zinc-700 text-transparent rounded px-2 py-0.5 cursor-pointer select-none transition">LED (Loss Event Database)</span>."
+        </p>
+        <span class="text-xs text-slate-400 block">*Klik kotak abu-abu untuk membuka jawaban.</span>
+      </div>
+    </section>
+
+    <!-- 4. FLASHCARDS & SPACED REPETITION -->
+    <section id="tab-flashcards" class="tab-content hidden space-y-6">
+      <div>
+        <h1 class="text-2xl font-bold">Flashcard & Review Spaced Repetition</h1>
+        <p class="text-sm text-slate-500">Review berkala menggunakan metode SM-2.</p>
+      </div>
+      <div class="flex justify-center">
+        <div id="flashcard-card" class="w-full max-w-md h-64 bg-white dark:bg-zinc-900 border-2 border-emerald-500/30 rounded-2xl p-6 flex flex-col justify-between items-center text-center shadow-lg transition-all duration-300">
+          <span class="text-xs font-semibold text-emerald-600 uppercase tracking-wider">Pertanyaan</span>
+          <p id="card-text" class="text-lg font-medium">Apa definisi dari Risiko Operasional dalam Perbankan?</p>
+          <button onclick="flipCard()" class="text-xs bg-slate-100 dark:bg-zinc-800 px-3 py-1.5 rounded-full text-slate-600 dark:text-zinc-300">Balik Kartu</button>
+        </div>
+      </div>
+      <div id="review-btns" class="flex justify-center gap-3 hidden">
+        <button onclick="rateCard('belum')" class="px-4 py-2 bg-red-100 text-red-700 rounded-xl text-sm font-semibold">Belum Hafal</button>
+        <button onclick="rateCard('hampir')" class="px-4 py-2 bg-amber-100 text-amber-700 rounded-xl text-sm font-semibold">Hampir Hafal</button>
+        <button onclick="rateCard('hafal')" class="px-4 py-2 bg-emerald-100 text-emerald-700 rounded-xl text-sm font-semibold">Sudah Hafal</button>
+      </div>
+    </section>
+
+  </main>
+
+  <script>
+    // Initialize Lucide Icons
+    lucide.createIcons();
+
+    // Default Sample Data
+    let notesData = [
+      {
+        id: '1',
+        title: 'MODUL 1 — MANAJEMEN RISIKO PERBANKAN',
+        collapsed: false,
+        subsections: [
+          { id: '1-1', title: '1. Pengertian & Prinsip Dasar', content: 'Manajemen risiko bertujuan mengidentifikasi, mengukur, memantau, dan mengendalikan risiko operasional.' },
+          { id: '1-2', title: '2. Jenis-Jenis Risiko', content: 'Risiko Kredit, Risiko Pasar, Risiko Operasional, dan Risiko Likuiditas.' }
+        ]
+      }
+    ];
+
+    // Mobile Sidebar Toggle
+    document.getElementById('mobile-menu-btn').addEventListener('click', () => {
+      document.getElementById('sidebar').classList.toggle('-translate-x-full');
+    });
+
+    // Tab Switching Logic
+    function switchTab(tabId) {
+      document.querySelectorAll('.tab-content').forEach(el => el.classList.add('hidden'));
+      document.querySelectorAll('.nav-btn').forEach(el => {
+        el.classList.remove('bg-emerald-50', 'text-emerald-600', 'dark:bg-emerald-950/50', 'dark:text-emerald-400');
+        el.classList.add('text-slate-600', 'dark:text-zinc-400');
+      });
+
+      document.getElementById(`tab-${tabId}`).classList.remove('hidden');
+      const activeNav = document.getElementById(`nav-${tabId}`);
+      activeNav.classList.add('bg-emerald-50', 'text-emerald-600', 'dark:bg-emerald-950/50', 'dark:text-emerald-400');
+
+      if (tabId === 'mindmap') renderMindMap();
+    }
+
+    // Render Notes Tree
+    function renderNotes() {
+      const container = document.getElementById('notes-tree');
+      container.innerHTML = notesData.map(note => `
+        <div class="bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 rounded-xl p-4 space-y-3">
+          <div class="flex items-center justify-between cursor-pointer" onclick="toggleCollapse('${note.id}')">
+            <div class="flex items-center gap-2 font-bold text-base">
+              <i data-lucide="${note.collapsed ? 'chevron-right' : 'chevron-down'}" class="w-5 h-5 text-emerald-500"></i>
+              <span>${note.title}</span>
+            </div>
+          </div>
+          ${!note.collapsed ? `
+            <div class="pl-6 space-y-2 border-l-2 border-emerald-500/20">
+              ${note.subsections.map(sub => `
+                <div class="p-3 bg-slate-50 dark:bg-zinc-800/50 rounded-lg text-sm space-y-1">
+                  <div class="font-semibold text-emerald-600 dark:text-emerald-400">${sub.title}</div>
+                  <div class="text-slate-600 dark:text-zinc-300 leading-relaxed">${sub.content}</div>
+                </div>
+              `).join('')}
+            </div>
+          ` : ''}
+        </div>
+      `).join('');
+      lucide.createIcons();
+    }
+
+    function toggleCollapse(id) {
+      const note = notesData.find(n => n.id === id);
+      if (note) note.collapsed = !note.collapsed;
+      renderNotes();
+    }
+
+    function toggleDarkMode() {
+      document.documentElement.classList.toggle('dark');
+    }
+
+    // Interactive Canvas Mind Map
+    let nodes = [
+      { id: 1, x: 150, y: 150, text: 'Manajemen Risiko' },
+      { id: 2, x: 350, y: 100, text: 'Risiko Operasional' },
+      { id: 3, x: 350, y: 200, text: 'Risiko Kredit' }
+    ];
+
+    function renderMindMap() {
+      const canvas = document.getElementById('mindmap-canvas');
+      const ctx = canvas.getContext('2d');
+      canvas.width = canvas.parentElement.clientWidth;
+      canvas.height = canvas.parentElement.clientHeight;
+
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+      // Draw lines
+      ctx.strokeStyle = '#10b981';
+      ctx.lineWidth = 2;
+      nodes.slice(1).forEach(node => {
+        ctx.beginPath();
+        ctx.moveTo(nodes[0].x, nodes[0].y);
+        ctx.lineTo(node.x, node.y);
+        ctx.stroke();
+      });
+
+      // Draw nodes
+      nodes.forEach(node => {
+        ctx.fillStyle = '#ffffff';
+        ctx.strokeStyle = '#10b981';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.roundRect(node.x - 70, node.y - 20, 140, 40, 10);
+        ctx.fill();
+        ctx.stroke();
+
+        ctx.fillStyle = '#0f172a';
+        ctx.font = '12px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(node.text, node.x, node.y);
+      });
+    }
+
+    // Flashcard Flip Logic
+    let isFlipped = false;
+    function flipCard() {
+      const text = document.getElementById('card-text');
+      const btns = document.getElementById('review-btns');
+      isFlipped = !isFlipped;
+      if (isFlipped) {
+        text.innerText = 'Risiko akibat ketidakcukupan atau tidak berfungsinya proses internal, kesalahan manusia, kegagalan sistem, atau adanya kejadian eksternal.';
+        btns.classList.remove('hidden');
+      } else {
+        text.innerText = 'Apa definisi dari Risiko Operasional dalam Perbankan?';
+        btns.classList.add('hidden');
+      }
+    }
+
+    function rateCard(rating) {
+      alert(`Rating berhasil disimpan: ${rating.toUpperCase()}. Jadwal review berikutnya telah diperbarui!`);
+      flipCard();
+    }
+
+    // Initial Load
+    renderNotes();
+  </script>
+</body>
+</html>
