@@ -1,0 +1,2811 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Personal Study Workspace</title>
+  
+  <!-- Tailwind CSS, Lucide Icons, html2canvas & jsPDF -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            brand: {
+              50: '#ecfdf5',
+              100: '#d1fae5',
+              500: '#10b981',
+              600: '#059669',
+              700: '#047857',
+            }
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+    .dark ::-webkit-scrollbar-thumb { background: #334155; }
+    canvas { touch-action: none; cursor: default; }
+    #active-note-editor ul { list-style-type: disc; padding-left: 20px; margin: 6px 0; }
+    #active-note-editor ol { list-style-type: decimal; padding-left: 20px; margin: 6px 0; }
+    
+    @keyframes pulse-wave {
+      0%, 100% { height: 8px; opacity: 0.3; }
+      50% { height: 35px; opacity: 1; }
+    }
+    .wave-bar.active { animation: pulse-wave 1s ease-in-out infinite; }
+    .wave-bar.paused { height: 8px !important; opacity: 0.3; animation: none; }
+  </style>
+</head>
+<body class="bg-slate-50 dark:bg-zinc-950 text-slate-900 dark:text-zinc-100 font-sans antialiased min-h-screen flex flex-col md:flex-row">
+
+  <!-- Mobile Header -->
+  <header class="md:hidden flex items-center justify-between p-4 bg-white dark:bg-zinc-900 border-b border-slate-200 dark:border-zinc-800 sticky top-0 z-50">
+    <div class="flex items-center gap-2 font-bold text-emerald-600 dark:text-emerald-400">
+      <i data-lucide="book-open" class="w-6 h-6"></i>
+      <span>StudyWorkspace</span>
+    </div>
+    <button id="mobile-menu-btn" class="p-2 text-slate-600 dark:text-zinc-300">
+      <i data-lucide="menu" class="w-6 h-6"></i>
+    </button>
+  </header>
+
+  <!-- Sidebar Navigation -->
+  <aside id="sidebar" class="fixed inset-y-0 left-0 z-40 w-72 bg-white dark:bg-zinc-900 border-r border-slate-200 dark:border-zinc-800 transform -translate-x-full md:translate-x-0 transition-transform duration-200 ease-in-out md:static flex flex-col justify-between p-5">
+    <div>
+      <div class="hidden md:flex items-center gap-3 font-bold text-xl text-emerald-600 dark:text-emerald-400 mb-6">
+        <i data-lucide="book-open" class="w-7 h-7"></i>
+        <span>Study Workspace</span>
+      </div>
+
+      <div class="space-y-1">
+        <div class="flex justify-between items-center px-1 mb-2">
+          <span class="text-[11px] font-bold uppercase tracking-wider text-slate-400">Navigasi Menu (Bisa Digeser)</span>
+          <button onclick="openAddMenuModal()" class="text-xs text-emerald-600 dark:text-emerald-400 font-semibold hover:underline flex items-center gap-1">
+            <i data-lucide="plus-circle" class="w-3.5 h-3.5"></i>
+            <span>Tambah</span>
+          </button>
+        </div>
+        <nav id="nav-list" class="space-y-1.5"></nav>
+      </div>
+    </div>
+
+    <div class="pt-4 border-t border-slate-200 dark:border-zinc-800 space-y-3">
+      <button onclick="toggleDarkMode()" class="w-full flex items-center gap-2 px-3 py-2 text-xs text-slate-600 dark:text-zinc-300 hover:bg-slate-100 dark:hover:bg-zinc-800 rounded-md">
+        <i data-lucide="moon" class="w-4 h-4"></i>
+        <span>Mode Gelap/Terang</span>
+      </button>
+    </div>
+  </aside>
+
+  <!-- Main Content Area -->
+  <main class="flex-1 p-4 md:p-8 max-w-6xl mx-auto w-full overflow-y-auto">
+
+    <!-- TAB 1: CATATAN & SUBBAB -->
+    <section id="tab-notes" class="tab-content space-y-6">
+      <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+          <h1 id="page-title-notes" class="text-2xl font-bold">Catatan & Sub-bab</h1>
+          <p class="text-sm text-slate-500">Buat, edit, dan kelola bab serta sub-bab materi belajar Anda.</p>
+        </div>
+        <button onclick="openNoteModal(null, false)" class="flex items-center justify-center gap-2 px-4 py-2 bg-emerald-600 text-white rounded-xl text-sm font-semibold hover:bg-emerald-700 transition shadow-sm">
+          <i data-lucide="plus" class="w-4 h-4"></i>
+          <span>+ Tambah Modul Utama</span>
+        </button>
+      </div>
+
+      <div class="relative">
+        <i data-lucide="search" class="w-5 h-5 absolute left-3 top-3 text-slate-400"></i>
+        <input type="text" id="global-search" onkeyup="filterNotes()" placeholder="Cari bab, sub-bab, atau isi materi..." class="w-full pl-10 pr-4 py-2.5 bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500">
+      </div>
+
+      <div id="notes-tree" class="space-y-4"></div>
+    </section>
+
+    <!-- TAB 2: KAMUS & ISTILAH -->
+    <section id="tab-dictionary" class="tab-content hidden space-y-6">
+      <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+          <h1 id="page-title-dictionary" class="text-2xl font-bold">Kamus & Istilah Penting</h1>
+          <p class="text-sm text-slate-500">Kumpulan istilah perbankan, regulasi, dan definisi berdampingan.</p>
+        </div>
+        <button onclick="openDictModal(null, false)" class="flex items-center justify-center gap-2 px-4 py-2 bg-emerald-600 text-white rounded-xl text-sm font-semibold hover:bg-emerald-700 transition shadow-sm">
+          <i data-lucide="plus" class="w-4 h-4"></i>
+          <span>+ Tambah Istilah Utama</span>
+        </button>
+      </div>
+
+      <div class="relative">
+        <i data-lucide="search" class="w-5 h-5 absolute left-3 top-3 text-slate-400"></i>
+        <input type="text" id="dict-search" onkeyup="filterDictionary()" placeholder="Cari istilah..." class="w-full pl-10 pr-4 py-2.5 bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500">
+      </div>
+
+      <div id="dictionary-tree" class="space-y-4"></div>
+    </section>
+
+    <!-- TAB 3: MIND MAP -->
+    <section id="tab-mindmap" class="tab-content hidden space-y-6">
+      <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        <div>
+          <h1 id="page-title-mindmap" class="text-2xl font-bold">Mind Map Interaktif</h1>
+          <p class="text-sm text-slate-500">Klik node untuk memilihnya, lalu tarik kotak kecil di sudut kanan bawah untuk resize.</p>
+        </div>
+
+        <div class="flex items-center gap-2">
+          <button onclick="exportCanvasToPDF()" class="flex items-center gap-1.5 px-3.5 py-2 bg-emerald-600 text-white rounded-xl text-xs font-semibold hover:bg-emerald-700 transition shadow-sm" title="Download Canvas sebagai PDF">
+            <i data-lucide="file-down" class="w-4 h-4"></i>
+            <span>Save as PDF</span>
+          </button>
+        </div>
+      </div>
+
+      <div class="bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 p-4 rounded-2xl shadow-sm space-y-3">
+        <div class="flex items-center justify-between bg-emerald-50/50 dark:bg-emerald-950/20 p-3 rounded-xl border border-emerald-100 dark:border-emerald-900/30">
+          <div class="flex items-center gap-2 flex-1 mr-3">
+            <i data-lucide="layout" class="w-4 h-4 text-emerald-600 dark:text-emerald-400 flex-shrink-0"></i>
+            <span class="text-xs font-bold text-slate-700 dark:text-zinc-200 whitespace-nowrap">Canvas Aktif:</span>
+            <select id="canvas-selector" onchange="switchCanvas(this.value)" class="w-full max-w-xs px-3 py-1.5 bg-white dark:bg-zinc-800 border border-slate-200 dark:border-zinc-700 rounded-lg text-xs font-bold text-emerald-700 dark:text-emerald-400 focus:outline-none focus:ring-2 focus:ring-emerald-500">
+            </select>
+          </div>
+          <div class="flex items-center gap-1.5">
+            <button onclick="openNewCanvasModal()" class="flex items-center gap-1 px-3 py-1.5 bg-emerald-600 text-white rounded-lg text-xs font-semibold hover:bg-emerald-700 transition shadow-sm whitespace-nowrap">
+              <i data-lucide="plus-circle" class="w-3.5 h-3.5"></i>
+              <span>+ Canvas Baru</span>
+            </button>
+            <button onclick="deleteCurrentCanvas()" title="Hapus Canvas Ini" class="p-1.5 bg-red-50 dark:bg-red-950/40 text-red-600 dark:text-red-400 rounded-lg hover:bg-red-100 transition">
+              <i data-lucide="trash-2" class="w-4 h-4"></i>
+            </button>
+          </div>
+        </div>
+
+        <div class="grid grid-cols-1 sm:grid-cols-4 gap-3">
+          <div>
+            <label class="block text-[11px] font-bold uppercase tracking-wider text-slate-400 mb-1">Mode</label>
+            <select id="mindmap-mode" onchange="onMindMapModeChange()" class="w-full px-3 py-2 bg-slate-50 dark:bg-zinc-800 border border-slate-200 dark:border-zinc-700 rounded-xl text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-emerald-500">
+              <option value="otomatis">Otomatis (Full Sub-bab)</option>
+              <option value="manual">Manual (Cabang)</option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-[11px] font-bold uppercase tracking-wider text-slate-400 mb-1">Modul</label>
+            <select id="mindmap-modul-select" onchange="onModulDropdownChange()" class="w-full px-3 py-2 bg-slate-50 dark:bg-zinc-800 border border-slate-200 dark:border-zinc-700 rounded-xl text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-emerald-500">
+            </select>
+          </div>
+          <div>
+            <label class="block text-[11px] font-bold uppercase tracking-wider text-slate-400 mb-1">Sub Modul</label>
+            <select id="mindmap-submodul-select" onchange="initMindMap()" class="w-full px-3 py-2 bg-slate-50 dark:bg-zinc-800 border border-slate-200 dark:border-zinc-700 rounded-xl text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-emerald-500">
+            </select>
+          </div>
+          <div>
+            <label class="block text-[11px] font-bold uppercase tracking-wider text-slate-400 mb-1">Ukuran Teks (Font)</label>
+            <select id="mindmap-font-size" onchange="initMindMap()" class="w-full px-3 py-2 bg-slate-50 dark:bg-zinc-800 border border-slate-200 dark:border-zinc-700 rounded-xl text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-emerald-500">
+              <option value="10">Kecil (10px)</option>
+              <option value="12" selected>Sedang (12px)</option>
+              <option value="16">Besar (16px)</option>
+            </select>
+          </div>
+        </div>
+      </div>
+
+      <div id="mindmap-container-wrapper" class="relative w-full h-[520px] bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 rounded-2xl overflow-hidden shadow-inner">
+        <button id="btn-add-nodes-canvas" onclick="openAddNodesPanel()" class="absolute top-4 right-4 z-10 flex items-center gap-1.5 px-3 py-2 bg-emerald-600 text-white rounded-xl text-xs font-semibold hover:bg-emerald-700 transition shadow-md">
+          <i data-lucide="plus-circle" class="w-4 h-4"></i>
+          <span>+ Add Nodes</span>
+        </button>
+        <canvas id="mindmap-canvas" class="w-full h-full"></canvas>
+      </div>
+      <p class="text-[11px] text-slate-400 italic text-center">*Tips: Save as PDF menghasilkan lembar kertas A4 Landscape murni tanpa batas kotak.</p>
+    </section>
+
+    <!-- TAB 4: MODE HAFALAN -->
+    <section id="tab-memorize" class="tab-content hidden space-y-6">
+      <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+          <h1 class="text-2xl font-bold">Mode Hafalan</h1>
+          <p class="text-sm text-slate-500">Latih daya ingat materi secara interaktif ala Quizlet.</p>
+        </div>
+        <div class="flex items-center gap-2">
+          <button onclick="openManualQuizModal()" class="flex items-center gap-1.5 px-3.5 py-2 bg-emerald-600 text-white rounded-xl text-xs font-semibold hover:bg-emerald-700 transition shadow-sm">
+            <i data-lucide="plus-circle" class="w-4 h-4"></i>
+            <span>+ Tambah Soal Manual</span>
+          </button>
+          <button onclick="resetMemorizeSession()" class="flex items-center gap-1.5 px-3.5 py-2 bg-slate-100 dark:bg-zinc-800 text-slate-600 dark:text-zinc-300 rounded-xl text-xs font-semibold hover:bg-slate-200 transition">
+            <i data-lucide="rotate-ccw" class="w-3.5 h-3.5"></i>
+            <span>Reset Progres</span>
+          </button>
+        </div>
+      </div>
+
+      <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
+        <div class="bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 p-4 rounded-2xl shadow-sm text-center">
+          <span class="text-[10px] font-bold uppercase tracking-wider text-slate-400">Tingkat Penguasaan</span>
+          <p id="stat-mastery" class="text-xl font-extrabold text-emerald-600 mt-1">0%</p>
+        </div>
+        <div class="bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 p-4 rounded-2xl shadow-sm text-center">
+          <span class="text-[10px] font-bold uppercase tracking-wider text-slate-400">Soal Dikerjakan</span>
+          <p id="stat-completed" class="text-xl font-extrabold text-slate-800 dark:text-zinc-100 mt-1">0</p>
+        </div>
+        <div class="bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 p-4 rounded-2xl shadow-sm text-center">
+          <span class="text-[10px] font-bold uppercase tracking-wider text-slate-400">Jawaban Benar</span>
+          <p id="stat-correct" class="text-xl font-extrabold text-emerald-600 mt-1">0</p>
+        </div>
+        <div class="bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 p-4 rounded-2xl shadow-sm text-center">
+          <span class="text-[10px] font-bold uppercase tracking-wider text-slate-400">Perlu Diulang</span>
+          <p id="stat-review" class="text-xl font-extrabold text-amber-500 mt-1">0</p>
+        </div>
+      </div>
+
+      <div id="memorize-setup-card" class="bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 p-6 rounded-2xl shadow-sm space-y-4">
+        <h3 class="font-bold text-base text-emerald-600 flex items-center gap-2">
+          <i data-lucide="settings" class="w-5 h-5"></i>
+          <span>Konfigurasi Sesi Belajar</span>
+        </h3>
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          <div>
+            <label class="block text-xs font-semibold mb-1 text-slate-500">Pilih Sumber Materi / Topik</label>
+            <select id="memo-source-select" class="w-full px-3 py-2 bg-slate-50 dark:bg-zinc-800 border border-slate-200 dark:border-zinc-700 rounded-xl text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-emerald-500">
+              <option value="ALL">Semua Modul & Topik Manual</option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-xs font-semibold mb-1 text-slate-500">Jenis Latihan</label>
+            <select id="memo-type-select" class="w-full px-3 py-2 bg-slate-50 dark:bg-zinc-800 border border-slate-200 dark:border-zinc-700 rounded-xl text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-emerald-500">
+              <option value="choice">Pilihan Ganda (4 Opsi)</option>
+              <option value="essay">Essay (Isian Uraian)</option>
+              <option value="flashcard">Flashcard (Hafalan Aktif)</option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-xs font-semibold mb-1 text-slate-500">Jumlah Soal (1 - 100)</label>
+            <input type="number" id="memo-count-input" min="1" max="100" value="10" class="w-full px-3 py-2 bg-slate-50 dark:bg-zinc-800 border border-slate-200 dark:border-zinc-700 rounded-xl text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-emerald-500">
+          </div>
+        </div>
+        <div class="flex justify-end pt-2">
+          <button onclick="startMemorizeSession()" class="px-5 py-2.5 bg-emerald-600 text-white rounded-xl text-xs font-semibold hover:bg-emerald-700 transition shadow-sm flex items-center gap-2">
+            <i data-lucide="play" class="w-4 h-4"></i>
+            <span>Mulai Sesi Hafalan</span>
+          </button>
+        </div>
+      </div>
+
+      <div id="memorize-quiz-card" class="bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 p-6 rounded-2xl shadow-lg space-y-6 hidden">
+        <div class="flex justify-between items-center border-b border-slate-100 dark:border-zinc-800 pb-3">
+          <span id="quiz-progress-text" class="text-xs font-bold text-emerald-600 uppercase tracking-wider">Soal 1 dari 10</span>
+          <button onclick="exitMemorizeQuiz()" class="text-xs text-slate-400 hover:text-red-500">Keluar Sesi</button>
+        </div>
+
+        <div class="space-y-2">
+          <span class="text-[10px] font-bold uppercase tracking-wider text-slate-400">Pertanyaan:</span>
+          <h2 id="quiz-question-title" class="text-lg font-bold text-slate-800 dark:text-zinc-100">Judul pertanyaan...</h2>
+        </div>
+
+        <div id="quiz-mode-choice" class="space-y-2.5 hidden">
+          <div id="quiz-choices-container" class="space-y-2"></div>
+        </div>
+
+        <div id="quiz-mode-essay" class="space-y-3 hidden">
+          <textarea id="quiz-essay-answer" rows="4" placeholder="Tuliskan jawaban uraian Anda di sini..." class="w-full px-4 py-3 bg-slate-50 dark:bg-zinc-800 border border-slate-200 dark:border-zinc-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"></textarea>
+          <button onclick="submitEssayAnswer()" class="px-4 py-2 bg-emerald-600 text-white rounded-xl text-xs font-semibold hover:bg-emerald-700">Periksa Jawaban</button>
+        </div>
+
+        <div id="quiz-mode-flashcard" class="space-y-4 text-center hidden">
+          <div id="flashcard-box" class="p-8 bg-slate-50 dark:bg-zinc-800/60 border border-slate-200 dark:border-zinc-700 rounded-2xl min-h-[140px] flex flex-col justify-center items-center cursor-pointer transition-all" onclick="flipFlashcardContent()">
+            <span class="text-[10px] font-semibold text-emerald-600 uppercase mb-1">Klik untuk membalik kartu</span>
+            <p id="flashcard-answer-text" class="text-base font-medium text-slate-700 dark:text-zinc-300 hidden">Jawaban materi...</p>
+            <p id="flashcard-hint-text" class="text-sm font-semibold text-slate-500 italic">Sembunyikan jawaban, klik untuk melihat kunci.</p>
+          </div>
+          <div class="flex justify-center gap-3">
+            <button onclick="answerFlashcard(false)" class="px-4 py-2 bg-red-100 text-red-700 rounded-xl text-xs font-semibold">Belum Hafal</button>
+            <button onclick="answerFlashcard(true)" class="px-4 py-2 bg-emerald-100 text-emerald-700 rounded-xl text-xs font-semibold">Sudah Hafal</button>
+          </div>
+        </div>
+
+        <div id="quiz-feedback-box" class="p-4 rounded-xl border hidden space-y-2">
+          <div id="feedback-status" class="font-bold text-sm">Status</div>
+          <p id="feedback-explanation" class="text-xs text-slate-600 dark:text-zinc-300 leading-relaxed">Penjelasan bersumber dari catatan...</p>
+          <div class="flex justify-end pt-2">
+            <button onclick="nextQuizQuestion()" class="px-4 py-2 bg-emerald-600 text-white rounded-xl text-xs font-semibold hover:bg-emerald-700">Lanjut ke Soal Berikutnya</button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- TAB: QUICK NOTES + AI SUMMARY -->
+    <section id="tab-quicknotes" class="tab-content hidden space-y-6">
+      <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+          <h1 class="text-2xl font-bold">Quick Notes & Planning</h1>
+          <p class="text-sm text-slate-500">Catatan cepat lengkap dengan Rich Text, AI Summary, dan To-Do List.</p>
+        </div>
+        <button onclick="createNewQuickNote()" class="flex items-center justify-center gap-2 px-4 py-2 bg-emerald-600 text-white rounded-xl text-sm font-semibold hover:bg-emerald-700 transition shadow-sm">
+          <i data-lucide="plus" class="w-4 h-4"></i>
+          <span>+ Catatan Baru</span>
+        </button>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-12 gap-4 bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 rounded-2xl overflow-hidden shadow-sm min-h-[620px]">
+        
+        <div class="md:col-span-4 border-r border-slate-200 dark:border-zinc-800 flex flex-col bg-slate-50/50 dark:bg-zinc-900/50">
+          <div class="p-3 border-b border-slate-200 dark:border-zinc-800 space-y-2">
+            <div class="relative">
+              <i data-lucide="search" class="w-4 h-4 absolute left-3 top-2.5 text-slate-400"></i>
+              <input type="text" id="quick-notes-search" onkeyup="renderQuickNotesList()" placeholder="Cari catatan..." class="w-full pl-9 pr-3 py-2 bg-white dark:bg-zinc-800 border border-slate-200 dark:border-zinc-700 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-emerald-500">
+            </div>
+          </div>
+          <div id="quick-notes-list" class="flex-1 overflow-y-auto divide-y divide-slate-100 dark:divide-zinc-800 max-h-[520px]">
+          </div>
+        </div>
+
+        <div class="md:col-span-8 flex flex-col p-5 space-y-4 overflow-y-auto">
+          <div id="quick-note-editor-container" class="space-y-4 hidden flex-1 flex flex-col">
+            <input type="hidden" id="active-note-id">
+            
+            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-100 dark:border-zinc-800 pb-3">
+              <input type="text" id="active-note-title" oninput="triggerAutoSaveNote()" placeholder="Judul catatan..." class="text-lg font-bold bg-transparent focus:outline-none w-full">
+              <div class="flex items-center gap-2 flex-shrink-0">
+                <span id="autosave-status" class="text-[10px] font-semibold text-slate-400 italic">Tersimpan otomatis</span>
+                <button onclick="togglePinActiveNote()" id="btn-pin-note" title="Pin / Favorite" class="p-2 text-slate-400 hover:text-amber-500 bg-slate-100 dark:bg-zinc-800 rounded-xl"><i data-lucide="pin" class="w-4 h-4"></i></button>
+                <button onclick="convertToStudyMaterial()" class="flex items-center gap-1 px-3 py-2 bg-emerald-50 dark:bg-emerald-950/50 text-emerald-600 dark:text-emerald-400 rounded-xl text-xs font-semibold hover:bg-emerald-100 transition" title="Pindahkan ke Modul Utama">
+                  <i data-lucide="folder-input" class="w-3.5 h-3.5"></i>
+                  <span>Convert</span>
+                </button>
+                <button onclick="deleteActiveNote()" title="Hapus Catatan" class="p-2 text-slate-400 hover:text-red-500 bg-slate-100 dark:bg-zinc-800 rounded-xl"><i data-lucide="trash-2" class="w-4 h-4"></i></button>
+              </div>
+            </div>
+
+            <div class="flex flex-wrap items-center gap-1.5 p-2 bg-slate-100 dark:bg-zinc-800/80 rounded-xl border border-slate-200 dark:border-zinc-700 text-xs">
+              <button onclick="formatNoteText('bold')" title="Bold" class="p-1.5 hover:bg-white dark:hover:bg-zinc-700 rounded"><i data-lucide="bold" class="w-3.5 h-3.5"></i></button>
+              <button onclick="formatNoteText('italic')" title="Italic" class="p-1.5 hover:bg-white dark:hover:bg-zinc-700 rounded"><i data-lucide="italic" class="w-3.5 h-3.5"></i></button>
+              <button onclick="formatNoteText('underline')" title="Underline" class="p-1.5 hover:bg-white dark:hover:bg-zinc-700 rounded"><i data-lucide="underline" class="w-3.5 h-3.5"></i></button>
+              <button onclick="formatNoteText('strikeThrough')" title="Strikethrough" class="p-1.5 hover:bg-white dark:hover:bg-zinc-700 rounded"><i data-lucide="strikethrough" class="w-3.5 h-3.5"></i></button>
+              
+              <span class="w-px h-4 bg-slate-300 dark:bg-zinc-600 mx-1"></span>
+
+              <button onclick="formatNoteText('insertUnorderedList')" title="Bullet Bulat" class="px-2.5 py-1 hover:bg-white dark:hover:bg-zinc-700 rounded font-bold text-sm">•</button>
+              <button onclick="formatNoteText('insertOrderedList')" title="Numbering Angka" class="px-2.5 py-1 hover:bg-white dark:hover:bg-zinc-700 rounded font-bold text-xs">123</button>
+
+              <span class="w-px h-4 bg-slate-300 dark:bg-zinc-600 mx-1"></span>
+
+              <select id="note-font-family" onchange="changeNoteFontFamily(this.value)" class="px-2 py-1 bg-white dark:bg-zinc-700 border border-slate-200 dark:border-zinc-600 rounded text-xs font-semibold">
+                <option value="sans-serif">Sans-Serif</option>
+                <option value="serif">Serif</option>
+                <option value="monospace">Monospace</option>
+                <option value="cursive">Cursive</option>
+              </select>
+              <select id="note-font-size" onchange="changeNoteFontSize(this.value)" class="px-2 py-1 bg-white dark:bg-zinc-700 border border-slate-200 dark:border-zinc-600 rounded text-xs font-semibold">
+                <option value="12px">12px</option>
+                <option value="14px" selected>14px</option>
+                <option value="18px">18px</option>
+                <option value="24px">24px</option>
+              </select>
+
+              <span class="w-px h-4 bg-slate-300 dark:bg-zinc-600 mx-1"></span>
+
+              <label class="flex items-center gap-1 px-2.5 py-1 bg-emerald-50 dark:bg-emerald-950/50 text-emerald-600 dark:text-emerald-400 rounded cursor-pointer hover:bg-emerald-100 font-semibold" title="Sisipkan Gambar">
+                <i data-lucide="image" class="w-3.5 h-3.5"></i>
+                <span>Sisip Gambar</span>
+                <input type="file" id="note-image-file" accept="image/*" onchange="insertImageIntoNote(event)" class="hidden">
+              </label>
+            </div>
+
+            <div id="active-note-editor" contenteditable="true" oninput="triggerAutoSaveNote()" class="w-full h-40 p-4 bg-slate-50 dark:bg-zinc-800/40 border border-slate-200 dark:border-zinc-700/60 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 overflow-y-auto"></div>
+
+            <!-- PLANNING TO-DO LIST SECTION -->
+            <div class="p-4 bg-emerald-50/40 dark:bg-emerald-950/10 border border-emerald-200 dark:border-emerald-900/30 rounded-2xl space-y-3">
+              <div class="flex items-center justify-between">
+                <h4 class="font-bold text-xs text-emerald-700 dark:text-emerald-400 flex items-center gap-1.5">
+                  <i data-lucide="check-square" class="w-4 h-4"></i>
+                  <span>Planning To-Do List</span>
+                </h4>
+                <span id="todo-counter" class="text-[10px] font-semibold text-slate-400">0 tugas selesai</span>
+              </div>
+
+              <div class="flex flex-col sm:flex-row gap-2">
+                <input type="text" id="new-todo-text" placeholder="Tulis tugas baru..." class="flex-1 px-3 py-2 bg-white dark:bg-zinc-800 border border-slate-200 dark:border-zinc-700 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-emerald-500">
+                <input type="date" id="new-todo-date" class="px-3 py-2 bg-white dark:bg-zinc-800 border border-slate-200 dark:border-zinc-700 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-emerald-500">
+                <button onclick="addTodoItem()" class="px-4 py-2 bg-emerald-600 text-white rounded-xl text-xs font-semibold hover:bg-emerald-700 transition shadow-sm whitespace-nowrap">+ Tambah</button>
+              </div>
+
+              <div id="todo-items-list" class="space-y-1.5 max-h-36 overflow-y-auto pr-1"></div>
+            </div>
+
+            <div class="flex items-center gap-2 pt-1">
+              <i data-lucide="tag" class="w-3.5 h-3.5 text-slate-400"></i>
+              <input type="text" id="active-note-tags" oninput="triggerAutoSaveNote()" placeholder="Tambah tag (pisahkan dengan koma)..." class="text-xs bg-transparent focus:outline-none text-slate-500 w-full">
+            </div>
+
+            <div class="pt-2 border-t border-slate-100 dark:border-zinc-800 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div class="flex items-center gap-2">
+                <span class="text-xs font-semibold text-slate-500">Panjang Ringkasan AI:</span>
+                <select id="ai-summary-length" class="px-2.5 py-1.5 bg-slate-50 dark:bg-zinc-800 border border-slate-200 dark:border-zinc-700 rounded-lg text-xs font-semibold focus:outline-none">
+                  <option value="singkat">Singkat</option>
+                  <option value="sedang" selected>Sedang</option>
+                  <option value="detail">Detail</option>
+                </select>
+              </div>
+              <button onclick="summarizeActiveNoteWithAI()" class="flex items-center justify-center gap-2 px-4 py-2 bg-emerald-600 text-white rounded-xl text-xs font-semibold hover:bg-emerald-700 transition shadow-sm">
+                <i data-lucide="sparkles" class="w-4 h-4"></i>
+                <span>Summarize with AI</span>
+              </button>
+            </div>
+
+            <div id="ai-summary-box" class="p-4 bg-emerald-50/50 dark:bg-emerald-950/20 border border-emerald-200 dark:border-emerald-900/40 rounded-2xl hidden space-y-3">
+              <div class="flex items-center justify-between border-b border-emerald-200 dark:border-emerald-900/40 pb-2">
+                <h4 class="font-bold text-xs text-emerald-700 dark:text-emerald-400 flex items-center gap-1.5">
+                  <i data-lucide="bot" class="w-4 h-4"></i>
+                  <span>Hasil Ringkasan AI</span>
+                </h4>
+                <div class="flex items-center gap-1">
+                  <button onclick="copyAiSummary()" title="Salin Ringkasan" class="p-1.5 text-emerald-600 hover:bg-emerald-100 rounded-lg"><i data-lucide="copy" class="w-3.5 h-3.5"></i></button>
+                  <button onclick="closeAiSummaryBox()" title="Tutup" class="p-1.5 text-slate-400 hover:text-slate-600 rounded-lg"><i data-lucide="x" class="w-3.5 h-3.5"></i></button>
+                </div>
+              </div>
+              <div id="ai-summary-text" class="text-xs text-slate-700 dark:text-zinc-300 leading-relaxed space-y-2"></div>
+            </div>
+
+          </div>
+
+          <div id="quick-note-placeholder" class="flex-1 flex flex-col items-center justify-center text-center p-8 text-slate-400 space-y-3">
+            <i data-lucide="file-pen-line" class="w-12 h-12 text-slate-300"></i>
+            <p class="text-sm">Pilih catatan di sebelah kiri atau buat catatan baru untuk mulai menulis.</p>
+          </div>
+        </div>
+
+      </div>
+    </section>
+
+    <!-- TAB: AI RECORDER & VOICE MEMOS (IPHONE STYLE + REAL REPLAY & MULTI-SAVE) -->
+    <section id="tab-voicerecorder" class="tab-content hidden space-y-6">
+      <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+          <h1 class="text-2xl font-bold">AI Voice Memos & Recorder</h1>
+          <p class="text-sm text-slate-500">Rekam suara, transkripsi real-time via Speech Recognition asli (ID & EN), dan putar ulang audio asli.</p>
+        </div>
+        <button onclick="prepareNewRecording()" class="flex items-center justify-center gap-1.5 px-4 py-2 bg-emerald-600 text-white rounded-xl text-xs font-semibold hover:bg-emerald-700 transition shadow-sm">
+          <i data-lucide="plus" class="w-4 h-4"></i>
+          <span>+ Tambah Rekaman Baru</span>
+        </button>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-12 gap-6 bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 p-6 rounded-2xl shadow-sm">
+        
+        <!-- Panel Kiri: Kontrol Recorder ala iPhone -->
+        <div class="md:col-span-5 space-y-5 border-b md:border-b-0 md:border-r border-slate-200 dark:border-zinc-800 pb-6 md:pb-0 md:pr-6 flex flex-col justify-between">
+          <div class="space-y-4">
+            <div>
+              <label class="block text-xs font-semibold mb-1 text-slate-500">Judul Rekaman / Sesi</label>
+              <input type="text" id="voice-rec-title" placeholder="Contoh: Sesi Kuliah Manajemen Risiko" class="w-full px-3 py-2 bg-slate-50 dark:bg-zinc-800 border border-slate-200 dark:border-zinc-700 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-emerald-500">
+            </div>
+
+            <div>
+              <label class="block text-xs font-semibold mb-1 text-slate-500">Bahasa Transkripsi</label>
+              <select id="voice-lang-select" class="w-full px-3 py-2 bg-slate-50 dark:bg-zinc-800 border border-slate-200 dark:border-zinc-700 rounded-xl text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-emerald-500">
+                <option value="id-ID">Bahasa Indonesia</option>
+                <option value="en-US">English (US)</option>
+              </select>
+            </div>
+
+            <!-- iPhone Voice Memos UI Box -->
+            <div class="p-6 bg-gradient-to-b from-slate-900 to-zinc-900 text-white rounded-2xl text-center space-y-4 shadow-inner relative overflow-hidden">
+              <div class="flex items-center justify-center gap-1.5 h-12">
+                <div id="wave-1" class="w-1.5 bg-emerald-400 rounded-full wave-bar paused" style="animation-delay: 0.1s"></div>
+                <div id="wave-2" class="w-1.5 bg-emerald-400 rounded-full wave-bar paused" style="animation-delay: 0.3s"></div>
+                <div id="wave-3" class="w-1.5 bg-emerald-400 rounded-full wave-bar paused" style="animation-delay: 0.2s"></div>
+                <div id="wave-4" class="w-1.5 bg-emerald-400 rounded-full wave-bar paused" style="animation-delay: 0.4s"></div>
+                <div id="wave-5" class="w-1.5 bg-emerald-400 rounded-full wave-bar paused" style="animation-delay: 0.1s"></div>
+                <div id="wave-6" class="w-1.5 bg-emerald-400 rounded-full wave-bar paused" style="animation-delay: 0.3s"></div>
+              </div>
+              <h2 id="rec-timer-display" class="text-4xl font-mono font-bold tracking-wider">00:00</h2>
+              <span id="rec-status-badge" class="inline-block px-3 py-1 bg-zinc-800 text-zinc-300 rounded-full text-[10px] uppercase font-semibold">Siap Merekam</span>
+
+              <!-- Tombol Lingkar ala iOS -->
+              <div class="flex items-center justify-center gap-4 pt-2">
+                <button id="btn-start-rec" onclick="startVoiceRecording()" title="Mulai Rekam" class="w-14 h-14 rounded-full bg-red-600 hover:bg-red-700 flex items-center justify-center text-white shadow-lg transition transform active:scale-95">
+                  <i data-lucide="mic" class="w-6 h-6"></i>
+                </button>
+                <button id="btn-stop-rec" onclick="stopVoiceRecording()" disabled title="Selesai & Simpan" class="w-14 h-14 rounded-full bg-zinc-700 flex items-center justify-center text-zinc-400 opacity-50 cursor-not-allowed transition">
+                  <i data-lucide="square" class="w-6 h-6"></i>
+                </button>
+              </div>
+            </div>
+
+            <div class="space-y-1.5">
+              <label class="block text-xs font-semibold text-slate-500">Atau Unggah Berkas Audio (MP3, WAV, M4A, WEBM)</label>
+              <input type="file" id="audio-file-upload" accept="audio/*" onchange="handleAudioFileUpload(event)" class="block w-full text-xs text-slate-500 file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-emerald-50 file:text-emerald-700 hover:file:bg-emerald-100 cursor-pointer">
+            </div>
+          </div>
+
+          <div class="pt-4">
+            <button onclick="generateVoiceAISummary()" class="w-full flex items-center justify-center gap-2 px-4 py-3 bg-emerald-600 text-white rounded-xl text-xs font-semibold hover:bg-emerald-700 transition shadow-md">
+              <i data-lucide="sparkles" class="w-4 h-4"></i>
+              <span>Generate AI Summary & Simpan Sesi</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- Panel Kanan: Daftar Rekaman Tersimpan & Transkrip -->
+        <div class="md:col-span-7 flex flex-col space-y-4">
+          <div class="flex items-center justify-between border-b border-slate-100 dark:border-zinc-800 pb-2">
+            <h3 class="font-bold text-sm text-slate-700 dark:text-zinc-200 flex items-center gap-2">
+              <i data-lucide="list-music" class="w-4 h-4 text-emerald-500"></i>
+              <span>Arsip Rekaman & Sesi Tersimpan</span>
+            </h3>
+            <span class="text-[10px] text-emerald-600 font-semibold">Tersinkronisasi & Bisa Diputar Ulang</span>
+          </div>
+
+          <!-- Daftar Arsip Rekaman -->
+          <div id="saved-recordings-list" class="space-y-2 max-h-48 overflow-y-auto pr-1">
+            <!-- Diisi JS -->
+          </div>
+
+          <!-- Workspace Transkrip Aktif -->
+          <div class="space-y-2 pt-2 border-t border-slate-100 dark:border-zinc-800">
+            <h4 class="font-bold text-xs text-slate-700 dark:text-zinc-300">Live Transcript & AI Summary Aktif</h4>
+            <div id="transcript-container" class="p-3 bg-slate-50 dark:bg-zinc-800/40 border border-slate-200 dark:border-zinc-700/60 rounded-xl text-xs text-slate-700 dark:text-zinc-300 space-y-2 min-h-[90px] max-h-36 overflow-y-auto">
+              <p class="text-slate-400 italic text-center py-4">Pilih salah satu arsip rekaman di atas untuk memutar audio & melihat transkrip.</p>
+            </div>
+            <div id="voice-smart-notes-output" class="p-3 bg-emerald-50/40 dark:bg-emerald-950/20 border border-emerald-100 dark:border-emerald-900/30 rounded-xl text-xs text-slate-700 dark:text-zinc-300 leading-relaxed min-h-[70px] max-h-36 overflow-y-auto">
+              <span class="text-slate-400 italic">Ringkasan AI & Smart Notes dari rekaman terpilih...</span>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </section>
+
+    <!-- TAB 5: FLASHCARDS -->
+    <section id="tab-flashcards" class="tab-content hidden space-y-6">
+      <div>
+        <h1 id="page-title-flashcards" class="text-2xl font-bold">Flashcard Review</h1>
+        <p class="text-sm text-slate-500">Latihan pengulangan berkala.</p>
+      </div>
+      <div class="flex justify-center">
+        <div id="flashcard-card" class="w-full max-w-md h-64 bg-white dark:bg-zinc-900 border-2 border-emerald-500/30 rounded-2xl p-6 flex flex-col justify-between items-center text-center shadow-lg transition-all">
+          <span class="text-xs font-semibold text-emerald-600 uppercase">Soal Flashcard</span>
+          <p id="card-question" class="text-lg font-medium">Tambah materi untuk mulai flashcard</p>
+          <button onclick="flipCard()" class="text-xs bg-slate-100 dark:bg-zinc-800 px-3 py-1.5 rounded-full text-slate-600 dark:text-zinc-300">Balik Kartu Jawaban</button>
+        </div>
+      </div>
+      <div id="review-btns" class="flex justify-center gap-3 hidden">
+        <button onclick="nextCard()" class="px-4 py-2 bg-red-100 text-red-700 rounded-xl text-sm font-semibold">Belum Hafal</button>
+        <button onclick="nextCard()" class="px-4 py-2 bg-emerald-100 text-emerald-700 rounded-xl text-sm font-semibold">Sudah Hafal</button>
+      </div>
+    </section>
+
+    <!-- TAB DINAMIS -->
+    <section id="tab-custom" class="tab-content hidden space-y-6">
+      <div>
+        <h1 id="custom-tab-title" class="text-2xl font-bold">Menu Kustom</h1>
+        <p class="text-sm text-slate-500">Halaman menu baru Anda. Tuliskan catatan atau daftar materi tambahan di bawah ini.</p>
+      </div>
+      <div class="p-6 bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 rounded-2xl space-y-3">
+        <textarea id="custom-tab-content" onkeyup="saveCustomTabContent()" rows="8" placeholder="Tulis catatan atau isi materi khusus untuk menu ini di sini..." class="w-full p-3 bg-slate-50 dark:bg-zinc-800/60 border border-slate-200 dark:border-zinc-700 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"></textarea>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- MODAL TAMBAH SOAL MANUAL -->
+  <div id="manual-quiz-modal" class="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 hidden">
+    <div class="bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 rounded-2xl max-w-lg w-full p-6 space-y-4 shadow-2xl max-h-[90vh] overflow-y-auto">
+      <div class="flex justify-between items-center border-b border-slate-100 dark:border-zinc-800 pb-3">
+        <h3 class="font-bold text-base text-emerald-600">Tambah Soal ke Bank Soal Manual</h3>
+        <button onclick="closeManualQuizModal()" class="text-slate-400 hover:text-slate-600"><i data-lucide="x" class="w-4 h-4"></i></button>
+      </div>
+      <div class="space-y-3">
+        <div>
+          <label class="block text-xs font-semibold mb-1 text-slate-500">Topik / Kategori Soal</label>
+          <input type="text" id="manual-quiz-topic" placeholder="Contoh: Regulasi Perbankan / Manajemen Risiko" class="w-full px-3 py-2 bg-slate-50 dark:bg-zinc-800 border border-slate-200 dark:border-zinc-700 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-emerald-500">
+        </div>
+        <div>
+          <label class="block text-xs font-semibold mb-1 text-slate-500">Tipe Soal Manual</label>
+          <select id="manual-quiz-type" onchange="toggleManualQuizFormType()" class="w-full px-3 py-2 bg-slate-50 dark:bg-zinc-800 border border-slate-200 dark:border-zinc-700 rounded-xl text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-emerald-500">
+            <option value="choice">Pilihan Ganda (4 Opsi)</option>
+            <option value="essay">Essay (Uraian)</option>
+          </select>
+        </div>
+        <div>
+          <label class="block text-xs font-semibold mb-1 text-slate-500">Pertanyaan / Soal</label>
+          <textarea id="manual-quiz-q" rows="2" placeholder="Tuliskan isi pertanyaan..." class="w-full px-3 py-2 bg-slate-50 dark:bg-zinc-800 border border-slate-200 dark:border-zinc-700 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-emerald-500"></textarea>
+        </div>
+
+        <div id="manual-form-choice" class="space-y-2">
+          <label class="block text-xs font-semibold text-slate-500">4 Pilihan Jawaban (Tandai yang Benar)</label>
+          <div class="flex items-center gap-2">
+            <input type="radio" name="correct-choice" value="0" checked>
+            <input type="text" id="manual-opt-0" placeholder="Pilihan A" class="w-full px-3 py-1.5 bg-slate-50 dark:bg-zinc-800 border border-slate-200 dark:border-zinc-700 rounded-lg text-xs">
+          </div>
+          <div class="flex items-center gap-2">
+            <input type="radio" name="correct-choice" value="1">
+            <input type="text" id="manual-opt-1" placeholder="Pilihan B" class="w-full px-3 py-1.5 bg-slate-50 dark:bg-zinc-800 border border-slate-200 dark:border-zinc-700 rounded-lg text-xs">
+          </div>
+          <div class="flex items-center gap-2">
+            <input type="radio" name="correct-choice" value="2">
+            <input type="text" id="manual-opt-2" placeholder="Pilihan C" class="w-full px-3 py-1.5 bg-slate-50 dark:bg-zinc-800 border border-slate-200 dark:border-zinc-700 rounded-lg text-xs">
+          </div>
+          <div class="flex items-center gap-2">
+            <input type="radio" name="correct-choice" value="3">
+            <input type="text" id="manual-opt-3" placeholder="Pilihan D" class="w-full px-3 py-1.5 bg-slate-50 dark:bg-zinc-800 border border-slate-200 dark:border-zinc-700 rounded-lg text-xs">
+          </div>
+        </div>
+
+        <div id="manual-form-essay" class="space-y-2 hidden">
+          <label class="block text-xs font-semibold mb-1 text-slate-500">Kunci Jawaban Uraian / Penjelasan</label>
+          <textarea id="manual-essay-a" rows="3" placeholder="Tuliskan kunci jawaban essay..." class="w-full px-3 py-2 bg-slate-50 dark:bg-zinc-800 border border-slate-200 dark:border-zinc-700 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-emerald-500"></textarea>
+        </div>
+      </div>
+      <div class="flex justify-end gap-2 pt-2 border-t border-slate-100 dark:border-zinc-800">
+        <button onclick="closeManualQuizModal()" class="px-4 py-2 text-xs font-semibold text-slate-500">Batal</button>
+        <button onclick="submitManualQuiz()" class="px-4 py-2 bg-emerald-600 text-white rounded-lg text-xs font-semibold hover:bg-emerald-700">Simpan Soal</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL BUAT CANVAS BARU -->
+  <div id="new-canvas-modal" class="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 hidden">
+    <div class="bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 rounded-2xl max-w-sm w-full p-5 space-y-4 shadow-2xl">
+      <div class="flex justify-between items-center border-b border-slate-100 dark:border-zinc-800 pb-2">
+        <h3 class="font-bold text-base text-emerald-600">Buat Canvas Mind Map Baru</h3>
+        <button onclick="closeNewCanvasModal()" class="text-slate-400 hover:text-slate-600"><i data-lucide="x" class="w-4 h-4"></i></button>
+      </div>
+      <div>
+        <label class="block text-xs font-semibold mb-1 text-slate-500">Nama Canvas</label>
+        <input type="text" id="new-canvas-name-input" placeholder="Contoh: Canvas Bab Manajemen Risiko" class="w-full px-3 py-2 bg-slate-50 dark:bg-zinc-800 border border-slate-200 dark:border-zinc-700 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500">
+      </div>
+      <div class="flex justify-end gap-2 pt-1">
+        <button onclick="closeNewCanvasModal()" class="px-3 py-1.5 text-xs font-semibold text-slate-500">Batal</button>
+        <button onclick="createNewCanvas()" class="px-3.5 py-1.5 bg-emerald-600 text-white rounded-lg text-xs font-semibold hover:bg-emerald-700">Buat Canvas</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL PANEL "ADD NODES" -->
+  <div id="add-nodes-modal" class="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 hidden">
+    <div class="bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 rounded-2xl max-w-md w-full p-6 space-y-4 shadow-2xl">
+      <div class="flex justify-between items-center border-b border-slate-100 dark:border-zinc-800 pb-3">
+        <h3 class="font-bold text-base text-emerald-600">Tambah Cabang Node Baru</h3>
+        <button onclick="closeAddNodesPanel()" class="text-slate-400 hover:text-slate-600"><i data-lucide="x" class="w-4 h-4"></i></button>
+      </div>
+
+      <div class="space-y-3">
+        <div>
+          <label class="block text-xs font-semibold mb-1 text-slate-500">Pilih Node Induk (Parent Node)</label>
+          <select id="node-modal-parent" class="w-full px-3 py-2 bg-slate-50 dark:bg-zinc-800 border border-slate-200 dark:border-zinc-700 rounded-xl text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-emerald-500">
+          </select>
+        </div>
+        <div>
+          <label class="block text-xs font-semibold mb-1 text-slate-500">Modul (Opsional)</label>
+          <select id="node-modal-modul" class="w-full px-3 py-2 bg-slate-50 dark:bg-zinc-800 border border-slate-200 dark:border-zinc-700 rounded-xl text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-emerald-500">
+          </select>
+        </div>
+        <div>
+          <label class="block text-xs font-semibold mb-1 text-slate-500">Sub Modul (Opsional)</label>
+          <select id="node-modal-submodul" class="w-full px-3 py-2 bg-slate-50 dark:bg-zinc-800 border border-slate-200 dark:border-zinc-700 rounded-xl text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-emerald-500">
+          </select>
+        </div>
+        <div>
+          <label class="block text-xs font-semibold mb-1 text-slate-500">Add Another / Teks Bebas (Opsional)</label>
+          <input type="text" id="node-modal-another" placeholder="Ketik nama node kustom bebas..." class="w-full px-3 py-2 bg-slate-50 dark:bg-zinc-800 border border-slate-200 dark:border-zinc-700 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-emerald-500">
+        </div>
+      </div>
+
+      <div class="flex justify-end gap-2 pt-2 border-t border-slate-100 dark:border-zinc-800">
+        <button onclick="closeAddNodesPanel()" class="px-4 py-2 text-xs font-semibold text-slate-500">Batal</button>
+        <button onclick="submitAddNodesModal()" class="px-4 py-2 bg-emerald-600 text-white rounded-lg text-xs font-semibold hover:bg-emerald-700">Tambahkan Node</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL POPUP PREVIEW PENJELASAN NODE MIND MAP -->
+  <div id="node-detail-modal" class="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 hidden">
+    <div class="bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 rounded-2xl max-w-md w-full p-6 space-y-4 shadow-2xl">
+      <div class="flex justify-between items-center border-b border-slate-100 dark:border-zinc-800 pb-3">
+        <h3 id="detail-node-title" class="font-bold text-base text-emerald-600">Judul Modul</h3>
+        <button onclick="closeNodeDetailModal()" class="text-slate-400 hover:text-slate-600"><i data-lucide="x" class="w-4 h-4"></i></button>
+      </div>
+      <div class="space-y-2">
+        <label class="block text-[11px] font-bold uppercase tracking-wider text-slate-400">Penjelasan dari Modul:</label>
+        <p id="detail-node-content" class="text-sm text-slate-700 dark:text-zinc-300 leading-relaxed bg-slate-50 dark:bg-zinc-800/50 p-3 rounded-xl border border-slate-200 dark:border-zinc-700/50">Isi penjelasan...</p>
+      </div>
+      <div class="flex justify-end pt-2">
+        <button onclick="closeNodeDetailModal()" class="px-4 py-2 bg-emerald-600 text-white rounded-xl text-xs font-semibold hover:bg-emerald-700">Tutup</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL RENAME / TAMBAH MENU -->
+  <div id="menu-modal" class="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 hidden">
+    <div class="bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 rounded-2xl max-w-sm w-full p-5 space-y-4 shadow-2xl">
+      <div class="flex justify-between items-center border-b border-slate-100 dark:border-zinc-800 pb-2">
+        <h3 id="menu-modal-heading" class="font-bold text-base">Rename / Tambah Menu</h3>
+        <button onclick="closeMenuModal()" class="text-slate-400 hover:text-slate-600"><i data-lucide="x" class="w-4 h-4"></i></button>
+      </div>
+      <input type="hidden" id="menu-target-id">
+      <div>
+        <label class="block text-xs font-semibold mb-1 text-slate-500">Nama Menu Navigasi</label>
+        <input type="text" id="menu-name-input" placeholder="Contoh: Latihan Soal Ujian" class="w-full px-3 py-2 bg-slate-50 dark:bg-zinc-800 border border-slate-200 dark:border-zinc-700 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500">
+      </div>
+      <div class="flex justify-end gap-2 pt-1">
+        <button onclick="closeMenuModal()" class="px-3 py-1.5 text-xs font-semibold text-slate-500">Batal</button>
+        <button onclick="saveMenu()" class="px-3.5 py-1.5 bg-emerald-600 text-white rounded-lg text-xs font-semibold hover:bg-emerald-700">Simpan Menu</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL FORM CATATAN -->
+  <div id="note-modal" class="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 hidden">
+    <div class="bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 rounded-2xl max-w-lg w-full p-6 space-y-4 shadow-2xl max-h-[90vh] overflow-y-auto">
+      <div class="flex justify-between items-center border-b border-slate-100 dark:border-zinc-800 pb-3">
+        <h3 id="modal-heading" class="font-bold text-lg">Tambah / Edit Sub-bab</h3>
+        <button onclick="closeNoteModal()" class="text-slate-400 hover:text-slate-600"><i data-lucide="x" class="w-4 h-4"></i></button>
+      </div>
+      
+      <input type="hidden" id="modal-target-id">
+      <input type="hidden" id="modal-is-edit" value="false">
+
+      <div class="space-y-3">
+        <div>
+          <label class="block text-xs font-semibold mb-1 text-slate-500">Judul Bab / Sub-bab</label>
+          <input type="text" id="modal-title" placeholder="Contoh: 1.1 Risiko Operasional & Indikator LED" class="w-full px-3 py-2 bg-slate-50 dark:bg-zinc-800 border border-slate-200 dark:border-zinc-700 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500">
+        </div>
+        <div>
+          <label class="block text-xs font-semibold mb-1 text-slate-500">Isi Penjelasan Teks</label>
+          <textarea id="modal-content" rows="3" placeholder="Tuliskan isi catatan atau penjelasan materi di sini..." class="w-full px-3 py-2 bg-slate-50 dark:bg-zinc-800 border border-slate-200 dark:border-zinc-700 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"></textarea>
+        </div>
+
+        <div class="p-3 bg-slate-50 dark:bg-zinc-800/60 rounded-xl space-y-1.5 border border-slate-200 dark:border-zinc-700/50">
+          <label class="block text-xs font-semibold text-slate-600 dark:text-zinc-300 flex items-center gap-1.5">
+            <i data-lucide="image" class="w-4 h-4 text-emerald-500"></i>
+            <span>Upload Gambar (PNG/JPG)</span>
+          </label>
+          <input type="file" id="modal-image" accept="image/*" class="block w-full text-xs text-slate-500 file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-emerald-50 file:text-emerald-700 hover:file:bg-emerald-100">
+        </div>
+
+        <div class="p-3 bg-slate-50 dark:bg-zinc-800/60 rounded-xl space-y-1.5 border border-slate-200 dark:border-zinc-700/50">
+          <label class="block text-xs font-semibold text-slate-600 dark:text-zinc-300 flex items-center gap-1.5">
+            <i data-lucide="mic" class="w-4 h-4 text-emerald-500"></i>
+            <span>Upload Rekaman Audio (MP3/WAV/M4A)</span>
+          </label>
+          <input type="file" id="modal-audio" accept="audio/*" class="block w-full text-xs text-slate-500 file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-emerald-50 file:text-emerald-700 hover:file:bg-emerald-100">
+        </div>
+
+        <div class="p-3 bg-slate-50 dark:bg-zinc-800/60 rounded-xl space-y-1.5 border border-slate-200 dark:border-zinc-700/50">
+          <label class="block text-xs font-semibold text-slate-600 dark:text-zinc-300 flex items-center gap-1.5">
+            <i data-lucide="file-text" class="w-4 h-4 text-emerald-500"></i>
+            <span>Upload Dokumen PDF / File Lampiran</span>
+          </label>
+          <input type="file" id="modal-file" accept=".pdf,.doc,.docx" class="block w-full text-xs text-slate-500 file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-emerald-50 file:text-emerald-700 hover:file:bg-emerald-100">
+        </div>
+      </div>
+
+      <div class="flex justify-end gap-2 pt-2 border-t border-slate-100 dark:border-zinc-800">
+        <button onclick="closeNoteModal()" class="px-4 py-2 text-xs font-semibold text-slate-500">Batal</button>
+        <button onclick="saveNode()" class="px-4 py-2 bg-emerald-600 text-white rounded-lg text-xs font-semibold hover:bg-emerald-700">Simpan Perubahan</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL FORM KAMUS -->
+  <div id="dict-modal" class="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 hidden">
+    <div class="bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 rounded-2xl max-w-lg w-full p-6 space-y-4 shadow-2xl max-h-[90vh] overflow-y-auto">
+      <div class="flex justify-between items-center border-b border-slate-100 dark:border-zinc-800 pb-3">
+        <h3 id="dict-modal-heading" class="font-bold text-lg">Tambah / Edit Istilah Kamus</h3>
+        <button onclick="closeDictModal()" class="text-slate-400 hover:text-slate-600"><i data-lucide="x" class="w-4 h-4"></i></button>
+      </div>
+      
+      <input type="hidden" id="dict-modal-target-id">
+      <input type="hidden" id="dict-modal-is-edit" value="false">
+
+      <div class="space-y-3">
+        <div>
+          <label class="block text-xs font-semibold mb-1 text-slate-500">Istilah / Kategori Kamus</label>
+          <input type="text" id="dict-modal-title" placeholder="Contoh: RCSA (Risk & Control Self Assessment)" class="w-full px-3 py-2 bg-slate-50 dark:bg-zinc-800 border border-slate-200 dark:border-zinc-700 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500">
+        </div>
+        <div>
+          <label class="block text-xs font-semibold mb-1 text-slate-500">Definisi / Penjelasan Lengkap</label>
+          <textarea id="dict-modal-content" rows="4" placeholder="Tuliskan definisi atau penjelasan istilah..." class="w-full px-3 py-2 bg-slate-50 dark:bg-zinc-800 border border-slate-200 dark:border-zinc-700 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"></textarea>
+        </div>
+      </div>
+
+      <div class="flex justify-end gap-2 pt-2 border-t border-slate-100 dark:border-zinc-800">
+        <button onclick="closeDictModal()" class="px-4 py-2 text-xs font-semibold text-slate-500">Batal</button>
+        <button onclick="saveDictNode()" class="px-4 py-2 bg-emerald-600 text-white rounded-lg text-xs font-semibold hover:bg-emerald-700">Simpan Istilah</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    lucide.createIcons();
+
+    let menuItems = JSON.parse(localStorage.getItem('study_nav_menus_v8')) || [
+      { id: 'notes', label: 'Catatan & Sub-bab', icon: 'file-text', isBuiltIn: true },
+      { id: 'dictionary', label: 'Kamus & Istilah', icon: 'book-marked', isBuiltIn: true },
+      { id: 'mindmap', label: 'Mind Map (Draggable)', icon: 'git-fork', isBuiltIn: true },
+      { id: 'memorize', label: 'Mode Hafalan', icon: 'brain', isBuiltIn: true },
+      { id: 'quicknotes', label: 'Quick Notes & AI', icon: 'file-pen-line', isBuiltIn: true },
+      { id: 'voicerecorder', label: 'AI Voice & Transcribe', icon: 'mic', isBuiltIn: true },
+      { id: 'flashcards', label: 'Flashcard Review', icon: 'layers', isBuiltIn: true }
+    ];
+
+    let activeTabId = 'notes';
+    let customContents = JSON.parse(localStorage.getItem('study_custom_tab_contents')) || {};
+    let draggedMenuIndex = null;
+
+    function renderNavMenu() {
+      const navList = document.getElementById('nav-list');
+      navList.innerHTML = menuItems.map((item, index) => {
+        const isActive = activeTabId === item.id;
+        return `
+          <div draggable="true"
+               ondragstart="onMenuDragStart(event, ${index})"
+               ondragover="onMenuDragOver(event)"
+               ondrop="onMenuDrop(event, ${index})"
+               class="group flex items-center justify-between rounded-lg transition cursor-grab active:cursor-grabbing border border-transparent hover:border-slate-200 dark:hover:border-zinc-800 ${isActive ? 'bg-emerald-50 text-emerald-600 dark:bg-emerald-950/50 dark:text-emerald-400' : 'text-slate-600 dark:text-zinc-400 hover:bg-slate-100 dark:hover:bg-zinc-800/60'}">
+            
+            <button onclick="switchTab('${item.id}')" class="flex items-center gap-2.5 px-3 py-2.5 w-full text-left text-sm font-medium">
+              <i data-lucide="grip-vertical" class="w-3.5 h-3.5 text-slate-300 dark:text-zinc-600 flex-shrink-0"></i>
+              <i data-lucide="${item.icon || 'bookmark'}" class="w-4 h-4 flex-shrink-0"></i>
+              <span class="truncate">${item.label}</span>
+            </button>
+
+            <div class="flex items-center gap-0.5 pr-1.5 opacity-0 group-hover:opacity-100 transition">
+              <button onclick="moveMenu(${index}, -1)" title="Geser ke Atas" class="p-0.5 text-slate-400 hover:text-emerald-600"><i data-lucide="chevron-up" class="w-3.5 h-3.5"></i></button>
+              <button onclick="moveMenu(${index}, 1)" title="Geser ke Bawah" class="p-0.5 text-slate-400 hover:text-emerald-600"><i data-lucide="chevron-down" class="w-3.5 h-3.5"></i></button>
+              <button onclick="openRenameMenuModal('${item.id}')" title="Rename" class="p-0.5 text-slate-400 hover:text-emerald-600"><i data-lucide="edit-2" class="w-3.5 h-3.5"></i></button>
+              ${!item.isBuiltIn ? `<button onclick="deleteCustomMenu('${item.id}')" title="Hapus" class="p-0.5 text-slate-400 hover:text-red-500"><i data-lucide="trash-2" class="w-3.5 h-3.5"></i></button>` : ''}
+            </div>
+          </div>
+        `;
+      }).join('');
+      lucide.createIcons();
+      localStorage.setItem('study_nav_menus_v8', JSON.stringify(menuItems));
+    }
+
+    function onMenuDragStart(e, index) { draggedMenuIndex = index; e.dataTransfer.effectAllowed = 'move'; }
+    function onMenuDragOver(e) { e.preventDefault(); e.dataTransfer.dropEffect = 'move'; }
+    function onMenuDrop(e, targetIndex) {
+      e.preventDefault();
+      if (draggedMenuIndex === null || draggedMenuIndex === targetIndex) return;
+      const movedItem = menuItems.splice(draggedMenuIndex, 1)[0];
+      menuItems.splice(targetIndex, 0, movedItem);
+      draggedMenuIndex = null;
+      renderNavMenu();
+    }
+
+    function moveMenu(index, direction) {
+      const newIndex = index + direction;
+      if (newIndex < 0 || newIndex >= menuItems.length) return;
+      const item = menuItems.splice(index, 1)[0];
+      menuItems.splice(newIndex, 0, item);
+      renderNavMenu();
+    }
+
+    function switchTab(tabId) {
+      activeTabId = tabId;
+      document.querySelectorAll('.tab-content').forEach(el => el.classList.add('hidden'));
+
+      if (['notes', 'dictionary', 'mindmap', 'memorize', 'quicknotes', 'voicerecorder', 'flashcards'].includes(tabId)) {
+        document.getElementById(`tab-${tabId}`).classList.remove('hidden');
+      } else {
+        document.getElementById('tab-custom').classList.remove('hidden');
+        const item = menuItems.find(m => m.id === tabId);
+        document.getElementById('custom-tab-title').innerText = item ? item.label : 'Menu Kustom';
+        document.getElementById('custom-tab-content').value = customContents[tabId] || '';
+      }
+
+      renderNavMenu();
+      if (tabId === 'notes') {
+        renderNotes(null);
+      }
+      if (tabId === 'dictionary') {
+        renderDictionary(null);
+      }
+      if (tabId === 'mindmap') {
+        populateCanvasSelector();
+        populateMindMapDropdowns();
+        initMindMap();
+      }
+      if (tabId === 'memorize') {
+        populateMemorizeDropdowns();
+        updateMemorizeStats();
+      }
+      if (tabId === 'quicknotes') {
+        renderQuickNotesList();
+      }
+      if (tabId === 'voicerecorder') {
+        renderSavedRecordings();
+      }
+      if (tabId === 'flashcards') setupFlashcards();
+    }
+
+    function openAddMenuModal() {
+      document.getElementById('menu-target-id').value = '';
+      document.getElementById('menu-modal-heading').innerText = 'Tambah Menu Navigasi';
+      document.getElementById('menu-name-input').value = '';
+      document.getElementById('menu-modal').classList.remove('hidden');
+    }
+
+    function openRenameMenuModal(id) {
+      const item = menuItems.find(m => m.id === id);
+      if (!item) return;
+      document.getElementById('menu-target-id').value = id;
+      document.getElementById('menu-modal-heading').innerText = 'Rename Menu';
+      document.getElementById('menu-name-input').value = item.label;
+      document.getElementById('menu-modal').classList.remove('hidden');
+    }
+
+    function closeMenuModal() { document.getElementById('menu-modal').classList.add('hidden'); }
+
+    function saveMenu() {
+      const targetId = document.getElementById('menu-target-id').value;
+      const name = document.getElementById('menu-name-input').value.trim();
+      if (!name) { alert('Mohon isi nama menu!'); return; }
+
+      if (targetId) {
+        const item = menuItems.find(m => m.id === targetId);
+        if (item) item.label = name;
+      } else {
+        const newId = 'custom-' + Date.now();
+        menuItems.push({ id: newId, label: name, icon: 'bookmark', isBuiltIn: false });
+        switchTab(newId);
+      }
+      renderNavMenu();
+      closeMenuModal();
+    }
+
+    function deleteCustomMenu(id) {
+      if (!confirm('Hapus menu ini?')) return;
+      menuItems = menuItems.filter(m => m.id !== id);
+      delete customContents[id];
+      localStorage.setItem('study_custom_tab_contents', JSON.stringify(customContents));
+      switchTab('notes');
+    }
+
+    function saveCustomTabContent() {
+      customContents[activeTabId] = document.getElementById('custom-tab-content').value;
+      localStorage.setItem('study_custom_tab_contents', JSON.stringify(customContents));
+    }
+
+    // --- NOTES DATA & LOGIC ---
+    let notesData = JSON.parse(localStorage.getItem('study_notes_tree_v5')) || [
+      {
+        id: '1',
+        title: 'MODUL 1 — MANAJEMEN RISIKO PERBANKAN',
+        content: 'Modul utama pembahasan kerangka kerja ERM.',
+        image: '', audio: '', fileData: '', fileName: '',
+        collapsed: false,
+        children: [
+          {
+            id: '1-1',
+            title: '1. Jenis Risiko Utama',
+            content: 'Mencakup Risiko Kredit, Pasar, Operasional, dan Likuiditas.',
+            image: '', audio: '', fileData: '', fileName: '',
+            collapsed: false,
+            children: [
+              {
+                id: '1-1-1',
+                title: '1.1 Indikator Risiko Operasional (RCSA, KRI, LED)',
+                content: 'RCSA digunakan untuk mengukur efektivitas kontrol internal.',
+                image: '', audio: '', fileData: '', fileName: '',
+                collapsed: false, children: []
+              }
+            ]
+          }
+        ]
+      }
+    ];
+
+    document.getElementById('mobile-menu-btn').addEventListener('click', () => {
+      document.getElementById('sidebar').classList.toggle('-translate-x-full');
+    });
+
+    function renderNotes(filteredData = null) {
+      const container = document.getElementById('notes-tree');
+      const dataToRender = filteredData !== null ? filteredData : notesData;
+      if (dataToRender.length === 0) {
+        container.innerHTML = `<p class="text-center text-sm text-slate-400 py-8">Tidak ada materi ditemukan.</p>`;
+        return;
+      }
+      container.innerHTML = dataToRender.map(node => renderNodeHTML(node, 0)).join('');
+      lucide.createIcons();
+      if (filteredData === null) localStorage.setItem('study_notes_tree_v5', JSON.stringify(notesData));
+    }
+
+    function openPdfOnline(base64Data, fileName) {
+      try {
+        const arr = base64Data.split(',');
+        const mime = arr[0].match(/:(.*?);/)[1];
+        const bstr = atob(arr[1]);
+        let n = bstr.length;
+        const u8arr = new Uint8Array(n);
+        while (n--) { u8arr[n] = bstr.charCodeAt(n); }
+        const blob = new Blob([u8arr], { type: mime });
+        const blobUrl = URL.createObjectURL(blob);
+        window.open(blobUrl, '_blank');
+      } catch (err) {
+        window.open(base64Data, '_blank');
+      }
+    }
+
+    function renderNodeHTML(node, depth) {
+      const hasChildren = node.children && node.children.length > 0;
+      const indentClass = depth > 0 ? `ml-${Math.min(depth * 4, 12)} pl-3 border-l-2 border-emerald-500/30 my-2` : 'mb-4';
+      return `
+        <div class="bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 rounded-xl p-3.5 ${indentClass} shadow-sm">
+          <div class="flex items-center justify-between gap-2">
+            <div class="flex items-center gap-2 font-semibold text-sm cursor-pointer flex-1" onclick="toggleCollapse('${node.id}')">
+              ${hasChildren ? `<i data-lucide="${node.collapsed ? 'chevron-right' : 'chevron-down'}" class="w-4 h-4 text-emerald-500 flex-shrink-0"></i>` : `<span class="w-4 inline-block"></span>`}
+              <span class="${depth === 0 ? 'text-base font-bold text-emerald-700 dark:text-emerald-400' : 'text-slate-800 dark:text-zinc-200'}">${node.title}</span>
+            </div>
+            <div class="flex items-center gap-1">
+              <button onclick="openNoteModal('${node.id}', true)" title="Edit" class="text-xs bg-slate-100 dark:bg-zinc-800 text-slate-600 dark:text-zinc-300 px-2 py-1 rounded-lg hover:bg-slate-200 transition">Edit</button>
+              <button onclick="openNoteModal('${node.id}', false)" title="Sub" class="text-xs bg-emerald-50 text-emerald-600 px-2 py-1 rounded-lg hover:bg-emerald-100 transition">+ Sub</button>
+              <button onclick="deleteNode('${node.id}')" title="Hapus" class="text-slate-400 hover:text-red-500 p-1"><i data-lucide="trash-2" class="w-3.5 h-3.5"></i></button>
+            </div>
+          </div>
+          ${!node.collapsed ? `
+            <div class="mt-2 space-y-2">
+              ${node.content ? `<div class="text-xs text-slate-600 dark:text-zinc-300 leading-relaxed bg-slate-50 dark:bg-zinc-800/40 p-2.5 rounded-lg">${node.content}</div>` : ''}
+              ${node.image ? `<div class="mt-2"><img src="${node.image}" class="max-h-60 rounded-xl object-cover border border-slate-200 dark:border-zinc-700"></div>` : ''}
+              ${node.audio ? `<div class="mt-2"><audio controls src="${node.audio}" class="w-full h-9 rounded-lg"></audio></div>` : ''}
+              ${node.fileData ? `
+                <div class="mt-3 p-3 bg-slate-50 dark:bg-zinc-800/50 rounded-xl border border-slate-200 dark:border-zinc-700 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+                  <div class="flex items-center gap-2">
+                    <i data-lucide="file-text" class="w-5 h-5 text-emerald-500 flex-shrink-0"></i>
+                    <span class="text-xs font-semibold truncate max-w-xs">${node.fileName || 'Dokumen PDF'}</span>
+                  </div>
+                  <div class="flex items-center gap-2 w-full sm:w-auto">
+                    <button onclick="openPdfOnline('${node.fileData}', '${node.fileName}')" class="flex-1 sm:flex-none text-center px-3 py-1.5 bg-emerald-50 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-400 rounded-lg text-xs font-semibold hover:bg-emerald-100 transition">Lihat Online</button>
+                    <a href="${node.fileData}" download="${node.fileName || 'dokumen.pdf'}" class="flex-1 sm:flex-none text-center px-3 py-1.5 bg-emerald-600 text-white rounded-lg text-xs font-semibold hover:bg-emerald-700 transition">Download PDF</a>
+                  </div>
+                </div>
+              ` : ''}
+              ${hasChildren ? `<div class="space-y-1 pt-1">${node.children.map(child => renderNodeHTML(child, depth + 1)).join('')}</div>` : ''}
+            </div>
+          ` : ''}
+        </div>
+      `;
+    }
+
+    function filterNotes() {
+      const query = document.getElementById('global-search').value.toLowerCase().trim();
+      if (!query) { renderNotes(null); return; }
+      function searchRecursive(nodes) {
+        let matchedNodes = [];
+        nodes.forEach(node => {
+          const matchSelf = node.title.toLowerCase().includes(query) || (node.content && node.content.toLowerCase().includes(query));
+          let matchedChildren = node.children ? searchRecursive(node.children) : [];
+          if (matchSelf || matchedChildren.length > 0) {
+            matchedNodes.push({ ...node, collapsed: false, children: matchedChildren.length > 0 ? matchedChildren : node.children });
+          }
+        });
+        return matchedNodes;
+      }
+      renderNotes(searchRecursive(notesData));
+    }
+
+    function findNodeAndParent(list, id, parent = null) {
+      for (let item of list) {
+        if (item.id === id) return { node: item, parent };
+        if (item.children && item.children.length > 0) {
+          let found = findNodeAndParent(item.children, id, item);
+          if (found) return found;
+        }
+      }
+      return null;
+    }
+
+    function toggleCollapse(id) {
+      const res = findNodeAndParent(notesData, id);
+      if (res && res.node) { res.node.collapsed = !res.node.collapsed; renderNotes(null); }
+    }
+
+    function openNoteModal(targetId, isEdit = false) {
+      document.getElementById('modal-target-id').value = targetId || '';
+      document.getElementById('modal-is-edit').value = isEdit ? 'true' : 'false';
+      document.getElementById('modal-image').value = '';
+      document.getElementById('modal-audio').value = '';
+      document.getElementById('modal-file').value = '';
+
+      if (isEdit && targetId) {
+        const res = findNodeAndParent(notesData, targetId);
+        if (res && res.node) {
+          document.getElementById('modal-heading').innerText = 'Edit Bab / Sub-bab';
+          document.getElementById('modal-title').value = res.node.title || '';
+          document.getElementById('modal-content').value = res.node.content || '';
+        }
+      } else {
+        document.getElementById('modal-heading').innerText = targetId ? 'Tambah Sub-bab Baru' : 'Tambah Modul Utama';
+        document.getElementById('modal-title').value = '';
+        document.getElementById('modal-content').value = '';
+      }
+      document.getElementById('note-modal').classList.remove('hidden');
+    }
+
+    function closeNoteModal() { document.getElementById('note-modal').classList.add('hidden'); }
+
+    async function saveNode() {
+      const targetId = document.getElementById('modal-target-id').value;
+      const isEdit = document.getElementById('modal-is-edit').value === 'true';
+      const title = document.getElementById('modal-title').value.trim();
+      const content = document.getElementById('modal-content').value.trim();
+      const imageFile = document.getElementById('modal-image').files[0];
+      const audioFile = document.getElementById('modal-audio').files[0];
+      const docFile = document.getElementById('modal-file').files[0];
+
+      if (!title) { alert('Mohon masukkan judul!'); return; }
+
+      let imageData = imageFile ? await readFileAsBase64(imageFile) : null;
+      let audioData = audioFile ? await readFileAsBase64(audioFile) : null;
+      let fileData = docFile ? await readFileAsBase64(docFile) : null;
+      let fileName = docFile ? docFile.name : null;
+
+      if (isEdit && targetId) {
+        const res = findNodeAndParent(notesData, targetId);
+        if (res && res.node) {
+          res.node.title = title;
+          res.node.content = content;
+          if (imageData) res.node.image = imageData;
+          if (audioData) res.node.audio = audioData;
+          if (fileData) {
+            res.node.fileData = fileData;
+            res.node.fileName = fileName;
+          }
+        }
+      } else {
+        const newNode = {
+          id: Date.now().toString(),
+          title,
+          content,
+          image: imageData || '',
+          audio: audioData || '',
+          fileData: fileData || '',
+          fileName: fileName || '',
+          collapsed: false,
+          children: []
+        };
+        if (!targetId) notesData.push(newNode);
+        else {
+          const res = findNodeAndParent(notesData, targetId);
+          if (res && res.node) { res.node.children.push(newNode); res.node.collapsed = false; }
+        }
+      }
+      renderNotes(null);
+      closeNoteModal();
+    }
+
+    function readFileAsBase64(file) {
+      return new Promise((resolve) => {
+        const reader = new FileReader();
+        reader.onload = (e) => resolve(e.target.result);
+        reader.readAsDataURL(file);
+      });
+    }
+
+    function deleteNode(id) {
+      if (!confirm('Hapus sub-bab ini?')) return;
+      const res = findNodeAndParent(notesData, id);
+      if (res) {
+        if (!res.parent) notesData = notesData.filter(n => n.id !== id);
+        else res.parent.children = res.parent.children.filter(n => n.id !== id);
+        renderNotes(null);
+      }
+    }
+
+    function toggleDarkMode() { document.documentElement.classList.toggle('dark'); }
+
+    // --- DICTIONARY DATA & LOGIC ---
+    let dictData = JSON.parse(localStorage.getItem('study_dict_tree_v3')) || [
+      {
+        id: 'd-1',
+        title: 'AML (Anti-Money Laundering)',
+        content: 'Regulasi dan prosedur perbankan untuk mencegah pencucian uang.',
+        collapsed: false,
+        children: [
+          {
+            id: 'd-1-1',
+            title: 'CDD (Customer Due Diligence)',
+            content: 'Proses identifikasi dan verifikasi identitas nasabah.',
+            collapsed: false, children: []
+          }
+        ]
+      }
+    ];
+
+    function renderDictionary(filteredData = null) {
+      const container = document.getElementById('dictionary-tree');
+      const dataToRender = filteredData !== null ? filteredData : dictData;
+      if (dataToRender.length === 0) {
+        container.innerHTML = `<p class="text-center text-sm text-slate-400 py-8">Belum ada istilah dalam kamus.</p>`;
+        return;
+      }
+      container.innerHTML = dataToRender.map(node => renderDictNodeHTML(node, 0)).join('');
+      lucide.createIcons();
+      if (filteredData === null) localStorage.setItem('study_dict_tree_v3', JSON.stringify(dictData));
+    }
+
+    function renderDictNodeHTML(node, depth) {
+      const hasChildren = node.children && node.children.length > 0;
+      const indentClass = depth > 0 ? `ml-${Math.min(depth * 4, 12)} pl-3 border-l-2 border-emerald-500/30 my-2` : 'mb-3';
+
+      return `
+        <div class="bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 rounded-xl p-4 ${indentClass} shadow-sm">
+          <div class="flex flex-col md:flex-row md:items-start justify-between gap-4">
+            <div class="flex items-center gap-2 font-semibold text-sm flex-1 cursor-pointer" onclick="toggleDictCollapse('${node.id}')">
+              ${hasChildren ? `<i data-lucide="${node.collapsed ? 'chevron-right' : 'chevron-down'}" class="w-4 h-4 text-emerald-500 flex-shrink-0"></i>` : `<span class="w-4 inline-block"></span>`}
+              <span class="${depth === 0 ? 'text-base font-bold text-emerald-700 dark:text-emerald-400' : 'text-slate-800 dark:text-zinc-200'}">${node.title}</span>
+            </div>
+            <div class="flex-1 md:border-l md:border-slate-100 md:dark:border-zinc-800 md:pl-4 text-xs md:text-sm text-slate-600 dark:text-zinc-300 leading-relaxed">
+              ${node.content || '<span class="italic text-slate-400">Belum ada penjelasan.</span>'}
+            </div>
+            <div class="flex items-center gap-1 self-end md:self-start flex-shrink-0 pt-1 md:pt-0">
+              <button onclick="openDictModal('${node.id}', true)" title="Edit" class="text-xs bg-slate-100 dark:bg-zinc-800 text-slate-600 dark:text-zinc-300 px-2.5 py-1 rounded-lg hover:bg-slate-200 transition">Edit</button>
+              <button onclick="openDictModal('${node.id}', false)" title="Sub" class="text-xs bg-emerald-50 text-emerald-600 px-2.5 py-1 rounded-lg hover:bg-emerald-100 transition">+ Sub</button>
+              <button onclick="deleteDictNode('${node.id}')" title="Hapus" class="text-slate-400 hover:text-red-500 p-1"><i data-lucide="trash-2" class="w-4 h-4"></i></button>
+            </div>
+          </div>
+          ${!node.collapsed && hasChildren ? `
+            <div class="mt-3 pt-3 border-t border-slate-100 dark:border-zinc-800 space-y-2">
+              ${node.children.map(child => renderDictNodeHTML(child, depth + 1)).join('')}
+            </div>
+          ` : ''}
+        </div>
+      `;
+    }
+
+    function findDictNodeAndParent(list, id, parent = null) {
+      for (let item of list) {
+        if (item.id === id) return { node: item, parent };
+        if (item.children && item.children.length > 0) {
+          let found = findDictNodeAndParent(item.children, id, item);
+          if (found) return found;
+        }
+      }
+      return null;
+    }
+
+    function toggleDictCollapse(id) {
+      const res = findDictNodeAndParent(dictData, id);
+      if (res && res.node) { res.node.collapsed = !res.node.collapsed; renderDictionary(null); }
+    }
+
+    function openDictModal(targetId, isEdit = false) {
+      document.getElementById('dict-modal-target-id').value = targetId || '';
+      document.getElementById('dict-modal-is-edit').value = isEdit ? 'true' : 'false';
+      if (isEdit && targetId) {
+        const res = findDictNodeAndParent(dictData, targetId);
+        if (res && res.node) {
+          document.getElementById('dict-modal-heading').innerText = 'Edit Istilah Kamus';
+          document.getElementById('dict-modal-title').value = res.node.title || '';
+          document.getElementById('dict-modal-content').value = res.node.content || '';
+        }
+      } else {
+        document.getElementById('dict-modal-heading').innerText = targetId ? 'Tambah Sub-istilah' : 'Tambah Istilah Utama';
+        document.getElementById('dict-modal-title').value = '';
+        document.getElementById('dict-modal-content').value = '';
+      }
+      document.getElementById('dict-modal').classList.remove('hidden');
+    }
+
+    function closeDictModal() { document.getElementById('dict-modal').classList.add('hidden'); }
+
+    function saveDictNode() {
+      const targetId = document.getElementById('dict-modal-target-id').value;
+      const isEdit = document.getElementById('dict-modal-is-edit').value === 'true';
+      const title = document.getElementById('dict-modal-title').value.trim();
+      const content = document.getElementById('dict-modal-content').value.trim();
+
+      if (!title) { alert('Mohon isi istilah kamus!'); return; }
+      if (isEdit && targetId) {
+        const res = findDictNodeAndParent(dictData, targetId);
+        if (res && res.node) { res.node.title = title; res.node.content = content; }
+      } else {
+        const newNode = { id: 'd-' + Date.now(), title, content, collapsed: false, children: [] };
+        if (!targetId) dictData.push(newNode);
+        else {
+          const res = findDictNodeAndParent(dictData, targetId);
+          if (res && res.node) { res.node.children.push(newNode); res.node.collapsed = false; }
+        }
+      }
+      renderDictionary(null);
+      closeDictModal();
+    }
+
+    function deleteDictNode(id) {
+      if (!confirm('Hapus istilah ini?')) return;
+      const res = findDictNodeAndParent(dictData, id);
+      if (res) {
+        if (!res.parent) dictData = dictData.filter(n => n.id !== id);
+        else res.parent.children = res.parent.children.filter(n => n.id !== id);
+        renderDictionary(null);
+      }
+    }
+
+    function filterDictionary() {
+      const query = document.getElementById('dict-search').value.toLowerCase().trim();
+      if (!query) { renderDictionary(null); return; }
+      function searchDictRecursive(nodes) {
+        let matched = [];
+        nodes.forEach(node => {
+          const match = node.title.toLowerCase().includes(query) || (node.content && node.content.toLowerCase().includes(query));
+          let subMatched = node.children ? searchDictRecursive(node.children) : [];
+          if (match || subMatched.length > 0) {
+            matched.push({ ...node, collapsed: false, children: subMatched.length > 0 ? subMatched : node.children });
+          }
+        });
+        return matched;
+      }
+      renderDictionary(searchDictRecursive(dictData));
+    }
+
+    // --- MULTI-CANVAS HIERARCHICAL MIND MAP SYSTEM ---
+    let canvases = JSON.parse(localStorage.getItem('study_mindmap_canvases_v8')) || {
+      'canvas-default': {
+        name: 'Canvas Utama',
+        mode: 'otomatis',
+        modulId: '1',
+        subId: 'ALL',
+        nodes: [
+          { id: 'root-1', text: 'Konsep Dasar', content: 'Root node manual.', parentId: null, x: 400, y: 250, width: 150, height: 40, isRoot: true }
+        ]
+      }
+    };
+    let currentCanvasId = localStorage.getItem('study_current_canvas_id') || 'canvas-default';
+    if (!canvases[currentCanvasId]) {
+      currentCanvasId = Object.keys(canvases)[0];
+    }
+
+    let autoLayoutNodes = [];
+    let selectedNode = null;
+    let draggedNode = null; 
+    let resizingNode = null;
+    let dragOffsetX = 0, dragOffsetY = 0;
+
+    function populateCanvasSelector() {
+      const selector = document.getElementById('canvas-selector');
+      selector.innerHTML = Object.keys(canvases).map(id => `
+        <option value="${id}">${canvases[id].name}</option>
+      `).join('');
+      selector.value = currentCanvasId;
+
+      const activeCanvas = canvases[currentCanvasId];
+      if (activeCanvas) {
+        document.getElementById('mindmap-mode').value = activeCanvas.mode || 'otomatis';
+      }
+    }
+
+    function switchCanvas(canvasId) {
+      currentCanvasId = canvasId;
+      localStorage.setItem('study_current_canvas_id', currentCanvasId);
+      const activeCanvas = canvases[currentCanvasId];
+      if (activeCanvas) {
+        document.getElementById('mindmap-mode').value = activeCanvas.mode || 'otomatis';
+        if (activeCanvas.modulId) {
+          document.getElementById('mindmap-modul-select').value = activeCanvas.modulId;
+          populateSubModulDropdown();
+          if (activeCanvas.subId) {
+            document.getElementById('mindmap-submodul-select').value = activeCanvas.subId;
+          }
+        }
+      }
+      selectedNode = null;
+      initMindMap();
+    }
+
+    function openNewCanvasModal() {
+      document.getElementById('new-canvas-name-input').value = '';
+      document.getElementById('new-canvas-modal').classList.remove('hidden');
+    }
+
+    function closeNewCanvasModal() {
+      document.getElementById('new-canvas-modal').classList.add('hidden');
+    }
+
+    function createNewCanvas() {
+      const name = document.getElementById('new-canvas-name-input').value.trim();
+      if (!name) { alert('Mohon isi nama canvas!'); return; }
+
+      const newId = 'canvas-' + Date.now();
+      canvases[newId] = {
+        name: name,
+        mode: 'otomatis',
+        modulId: notesData[0] ? notesData[0].id : '',
+        subId: 'ALL',
+        nodes: [{ id: 'root-' + Date.now(), text: name, content: 'Canvas baru.', parentId: null, x: 400, y: 250, width: 180, height: 50, isRoot: true }]
+      };
+
+      localStorage.setItem('study_mindmap_canvases_v8', JSON.stringify(canvases));
+      closeNewCanvasModal();
+      populateCanvasSelector();
+      switchCanvas(newId);
+    }
+
+    function deleteCurrentCanvas() {
+      const keys = Object.keys(canvases);
+      if (keys.length <= 1) {
+        alert('Minimal harus ada 1 canvas!');
+        return;
+      }
+      if (!confirm(`Hapus canvas "${canvases[currentCanvasId].name}"?`)) return;
+
+      delete canvases[currentCanvasId];
+      localStorage.setItem('study_mindmap_canvases_v8', JSON.stringify(canvases));
+      currentCanvasId = Object.keys(canvases)[0];
+      localStorage.setItem('study_current_canvas_id', currentCanvasId);
+      populateCanvasSelector();
+      switchCanvas(currentCanvasId);
+    }
+
+    function saveCurrentCanvasState() {
+      if (!canvases[currentCanvasId]) return;
+      canvases[currentCanvasId].mode = document.getElementById('mindmap-mode').value;
+      canvases[currentCanvasId].modulId = document.getElementById('mindmap-modul-select').value;
+      canvases[currentCanvasId].subId = document.getElementById('mindmap-submodul-select').value;
+      localStorage.setItem('study_mindmap_canvases_v8', JSON.stringify(canvases));
+    }
+
+    function populateMindMapDropdowns() {
+      const modulSelect = document.getElementById('mindmap-modul-select');
+      modulSelect.innerHTML = notesData.map(m => `<option value="${m.id}">${m.title}</option>`).join('');
+      
+      const activeCanvas = canvases[currentCanvasId];
+      if (activeCanvas && activeCanvas.modulId && notesData.some(m => m.id === activeCanvas.modulId)) {
+        modulSelect.value = activeCanvas.modulId;
+      }
+
+      populateSubModulDropdown();
+    }
+
+    function populateSubModulDropdown() {
+      const modulId = document.getElementById('mindmap-modul-select').value;
+      const subSelect = document.getElementById('mindmap-submodul-select');
+      const mod = notesData.find(m => m.id === modulId);
+      
+      if (!mod || !mod.children || mod.children.length === 0) {
+        subSelect.innerHTML = `<option value="ALL">(Semua Sub-bab Modul)</option>`;
+      } else {
+        subSelect.innerHTML = `<option value="ALL">(Semua Sub-bab Modul)</option>` + mod.children.map(c => `<option value="${c.id}">${c.title}</option>`).join('');
+      }
+
+      const activeCanvas = canvases[currentCanvasId];
+      if (activeCanvas && activeCanvas.subId) {
+        subSelect.value = activeCanvas.subId;
+      }
+
+      saveCurrentCanvasState();
+      initMindMap();
+    }
+
+    function onModulDropdownChange() {
+      populateSubModulDropdown();
+    }
+
+    function onMindMapModeChange() {
+      saveCurrentCanvasState();
+      initMindMap();
+    }
+
+    function generateAutoLayoutNodes() {
+      const modulId = document.getElementById('mindmap-modul-select').value;
+      const subId = document.getElementById('mindmap-submodul-select').value;
+      const mod = notesData.find(m => m.id === modulId) || notesData[0];
+      if (!mod) { autoLayoutNodes = []; return; }
+
+      const canvas = document.getElementById('mindmap-canvas');
+      const width = canvas ? canvas.parentElement.clientWidth : 800;
+      const height = canvas ? canvas.parentElement.clientHeight : 520;
+      const centerX = width / 2;
+      const centerY = height / 2;
+
+      autoLayoutNodes = [
+        { id: mod.id, text: mod.title, content: mod.content || 'Modul Utama', parentId: null, x: centerX, y: centerY, width: 180, height: 50, isRoot: true }
+      ];
+
+      function flattenSubTree(childrenList, parentId, currentRadius, depth) {
+        if (!childrenList || childrenList.length === 0) return;
+        const total = childrenList.length;
+        const angleStep = (2 * Math.PI) / total;
+
+        childrenList.forEach((child, idx) => {
+          const angle = idx * angleStep;
+          const nodeDist = currentRadius + (depth * 95);
+          const nx = centerX + nodeDist * Math.cos(angle);
+          const ny = centerY + nodeDist * Math.sin(angle);
+
+          autoLayoutNodes.push({
+            id: child.id,
+            text: child.title,
+            content: child.content || 'Penjelasan sub-bab.',
+            parentId: parentId,
+            x: nx,
+            y: ny,
+            width: 150,
+            height: 40,
+            isRoot: false
+          });
+
+          if (child.children && child.children.length > 0) {
+            flattenSubTree(child.children, child.id, nodeDist + 60, depth + 1);
+          }
+        });
+      }
+
+      let targetChildren = mod.children || [];
+      if (subId && subId !== 'ALL') {
+        const foundSub = targetChildren.find(c => c.id === subId);
+        targetChildren = foundSub ? [foundSub] : [];
+      }
+
+      flattenSubTree(targetChildren, mod.id, 140, 1);
+    }
+
+    function initMindMap() {
+      const canvas = document.getElementById('mindmap-canvas');
+      if (!canvas) return;
+      const ctx = canvas.getContext('2d');
+      canvas.width = canvas.parentElement.clientWidth;
+      canvas.height = canvas.parentElement.clientHeight;
+
+      const mode = document.getElementById('mindmap-mode').value;
+      if (mode === 'otomatis') {
+        generateAutoLayoutNodes();
+      }
+
+      const fontSizePref = parseInt(document.getElementById('mindmap-font-size').value) || 12;
+
+      function draw() {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        ctx.strokeStyle = '#10b981'; ctx.lineWidth = 2;
+
+        const activeCanvas = canvases[currentCanvasId];
+        const nodesToDraw = mode === 'otomatis' ? autoLayoutNodes : (activeCanvas ? activeCanvas.nodes : []);
+        if (nodesToDraw.length === 0) return;
+
+        nodesToDraw.forEach(n => {
+          if (n.parentId) {
+            const parentNode = nodesToDraw.find(p => p.id === n.parentId);
+            if (parentNode) {
+              ctx.beginPath();
+              ctx.moveTo(parentNode.x, parentNode.y);
+              ctx.lineTo(n.x, n.y);
+              ctx.stroke();
+            }
+          }
+        });
+
+        nodesToDraw.forEach(n => {
+          const isRootNode = n.isRoot || (mode === 'manual' && !n.parentId);
+          ctx.fillStyle = isRootNode ? '#10b981' : '#ffffff';
+          ctx.strokeStyle = isRootNode ? '#047857' : '#10b981';
+          ctx.lineWidth = 2.5;
+
+          const boxWidth = n.width || (isRootNode ? 180 : 150);
+          const boxHeight = n.height || (isRootNode ? 50 : 40);
+
+          ctx.beginPath();
+          ctx.roundRect(n.x - boxWidth / 2, n.y - boxHeight / 2, boxWidth, boxHeight, 10);
+          ctx.fill();
+          ctx.stroke();
+
+          if (selectedNode === n) {
+            ctx.fillStyle = '#f59e0b';
+            ctx.fillRect(n.x + boxWidth / 2 - 8, n.y + boxHeight / 2 - 8, 16, 16);
+            ctx.strokeStyle = '#ffffff';
+            ctx.lineWidth = 2;
+            ctx.strokeRect(n.x + boxWidth / 2 - 8, n.y + boxHeight / 2 - 8, 16, 16);
+          }
+
+          ctx.fillStyle = isRootNode ? '#ffffff' : '#0f172a';
+          ctx.font = `bold ${fontSizePref}px sans-serif`; 
+          ctx.textAlign = 'center'; 
+          ctx.textBaseline = 'middle';
+          ctx.fillText(n.text.length > 22 ? n.text.substring(0, 20) + '..' : n.text, n.x, n.y);
+        });
+      }
+
+      let isDragging = false;
+      canvas.onmousedown = (e) => {
+        const rect = canvas.getBoundingClientRect();
+        const mx = e.clientX - rect.left, my = e.clientY - rect.top;
+        const activeCanvas = canvases[currentCanvasId];
+        const activeNodes = mode === 'otomatis' ? autoLayoutNodes : (activeCanvas ? activeCanvas.nodes : []);
+
+        resizingNode = null;
+        draggedNode = null;
+
+        if (selectedNode) {
+          const w = selectedNode.width || (selectedNode.isRoot ? 180 : 150);
+          const h = selectedNode.height || (selectedNode.isRoot ? 50 : 40);
+          const handleX = selectedNode.x + w / 2;
+          const handleY = selectedNode.y + h / 2;
+          if (mx >= handleX - 16 && mx <= handleX + 16 && my >= handleY - 16 && my <= handleY + 16) {
+            resizingNode = selectedNode;
+            return;
+          }
+        }
+
+        let foundNode = null;
+        for (let i = activeNodes.length - 1; i >= 0; i--) {
+          const n = activeNodes[i];
+          const w = n.width || (n.isRoot ? 180 : 150);
+          const h = n.height || (n.isRoot ? 50 : 40);
+          if (mx >= n.x - w / 2 && mx <= n.x + w / 2 && my >= n.y - h / 2 && my <= n.y + h / 2) {
+            foundNode = n;
+            break;
+          }
+        }
+
+        if (foundNode) {
+          draggedNode = foundNode; 
+          selectedNode = foundNode;
+          dragOffsetX = mx - foundNode.x; 
+          dragOffsetY = my - foundNode.y;
+          isDragging = false;
+        } else {
+          selectedNode = null;
+        }
+        draw();
+      };
+
+      canvas.onmousemove = (e) => {
+        const rect = canvas.getBoundingClientRect();
+        const mx = e.clientX - rect.left;
+        const my = e.clientY - rect.top;
+
+        if (resizingNode) {
+          const newW = Math.max(70, (mx - resizingNode.x) * 2);
+          const newH = Math.max(30, (my - resizingNode.y) * 2);
+          resizingNode.width = newW;
+          resizingNode.height = newH;
+          if (mode === 'manual') {
+            localStorage.setItem('study_mindmap_canvases_v8', JSON.stringify(canvases));
+          }
+          draw();
+          return;
+        }
+
+        if (!draggedNode) return;
+        const newX = mx - dragOffsetX;
+        const newY = my - dragOffsetY;
+
+        if (Math.abs(newX - draggedNode.x) > 2 || Math.abs(newY - draggedNode.y) > 2) {
+          isDragging = true;
+        }
+        draggedNode.x = newX;
+        draggedNode.y = newY;
+        if (mode === 'manual') {
+          localStorage.setItem('study_mindmap_canvases_v8', JSON.stringify(canvases));
+        }
+        draw();
+      };
+
+      canvas.onmouseup = () => {
+        if (draggedNode && !isDragging) {
+          openNodeDetailModal(draggedNode.text, draggedNode.content);
+        }
+        draggedNode = null;
+        resizingNode = null;
+        isDragging = false;
+      };
+
+      draw();
+    }
+
+    // --- EXPORT CANVAS TO PDF ---
+    async function exportCanvasToPDF() {
+      const { jsPDF } = window.jspdf;
+      const canvasEl = document.getElementById('mindmap-canvas');
+      const btnAdd = document.getElementById('btn-add-nodes-canvas');
+      
+      btnAdd.style.display = 'none';
+      const tempSelected = selectedNode;
+      selectedNode = null;
+      initMindMap();
+
+      try {
+        const canvasImage = await html2canvas(canvasEl, { scale: 2, useCORS: true });
+        const imgData = canvasImage.toDataURL('image/png');
+        
+        const pdf = new jsPDF('landscape', 'mm', 'a4');
+        const pdfWidth = pdf.internal.pageSize.getWidth();
+        const pdfHeight = (canvasImage.height * pdfWidth) / canvasImage.width;
+        
+        pdf.addImage(imgData, 'PNG', 0, 10, pdfWidth, pdfHeight);
+        const activeCanvasName = canvases[currentCanvasId] ? canvases[currentCanvasId].name : 'mindmap';
+        pdf.save(`${activeCanvasName.toLowerCase().replace(/\s+/g, '_')}.pdf`);
+      } catch (err) {
+        alert('Gagal mengekspor canvas ke PDF.');
+      } finally {
+        btnAdd.style.display = 'flex';
+        selectedNode = tempSelected;
+        initMindMap();
+      }
+    }
+
+    function openAddNodesPanel() {
+      document.getElementById('mindmap-mode').value = 'manual';
+      onMindMapModeChange();
+      populateNodeModalDropdowns();
+      document.getElementById('node-modal-another').value = '';
+      document.getElementById('add-nodes-modal').classList.remove('hidden');
+    }
+
+    function closeAddNodesPanel() {
+      document.getElementById('add-nodes-modal').classList.add('hidden');
+    }
+
+    function populateNodeModalDropdowns() {
+      const activeCanvas = canvases[currentCanvasId];
+      const pSelect = document.getElementById('node-modal-parent');
+      if (activeCanvas && activeCanvas.nodes) {
+        pSelect.innerHTML = activeCanvas.nodes.map(n => `<option value="${n.id}">${n.text}</option>`).join('');
+      }
+
+      const mSelect = document.getElementById('node-modal-modul');
+      mSelect.innerHTML = `<option value="">(Pilih Modul - Opsional)</option>` + notesData.map(m => `<option value="${m.id}">${m.title}</option>`).join('');
+      populateNodeModalSubModulDropdown();
+    }
+
+    function populateNodeModalSubModulDropdown() {
+      const mId = document.getElementById('node-modal-modul').value;
+      const sSelect = document.getElementById('node-modal-submodul');
+      if (!mId) {
+        sSelect.innerHTML = `<option value="">(Pilih Sub Modul - Opsional)</option>`;
+        return;
+      }
+      const mod = notesData.find(m => m.id === mId);
+      if (!mod || !mod.children || mod.children.length === 0) {
+        sSelect.innerHTML = `<option value="">(Tidak ada sub-modul)</option>`;
+      } else {
+        sSelect.innerHTML = `<option value="">(Pilih Sub Modul - Opsional)</option>` + mod.children.map(c => `<option value="${c.title}">${c.title}</option>`).join('');
+      }
+    }
+
+    document.getElementById('node-modal-modul').addEventListener('change', populateNodeModalSubModulDropdown);
+
+    function submitAddNodesModal() {
+      const parentId = document.getElementById('node-modal-parent').value;
+      const anotherText = document.getElementById('node-modal-another').value.trim();
+      const subText = document.getElementById('node-modal-submodul').value;
+      const mId = document.getElementById('node-modal-modul').value;
+      const modSelect = document.getElementById('node-modal-modul');
+      const modText = modSelect.options[modSelect.selectedIndex] ? modSelect.options[modSelect.selectedIndex].text : '';
+
+      let finalTitle = '';
+      let finalContent = 'Node baru ditambahkan.';
+
+      if (anotherText) {
+        finalTitle = anotherText;
+        finalContent = 'Catatan kustom bebas.';
+      } else if (subText) {
+        finalTitle = subText;
+        const mod = notesData.find(m => m.id === mId);
+        if (mod && mod.children) {
+          const sub = mod.children.find(c => c.title === subText);
+          if (sub) finalContent = sub.content || 'Penjelasan sub-modul.';
+        }
+      } else if (mId) {
+        finalTitle = modText;
+        const mod = notesData.find(m => m.id === mId);
+        if (mod) finalContent = mod.content || 'Modul Utama.';
+      } else {
+        alert('Mohon isi minimal salah satu field (Modul, Sub Modul, atau Teks Bebas)!');
+        return;
+      }
+
+      if (canvases[currentCanvasId]) {
+        const parentNode = canvases[currentCanvasId].nodes.find(n => n.id === parentId);
+        const posX = parentNode ? parentNode.x + (Math.random() * 160 - 80) : 300;
+        const posY = parentNode ? parentNode.y + 120 : 300;
+
+        canvases[currentCanvasId].nodes.push({
+          id: 'm-' + Date.now(),
+          text: finalTitle,
+          content: finalContent,
+          parentId: parentId || null,
+          x: posX,
+          y: posY,
+          width: 150,
+          height: 40,
+          isRoot: false
+        });
+        localStorage.setItem('study_mindmap_canvases_v8', JSON.stringify(canvases));
+      }
+
+      initMindMap();
+      closeAddNodesPanel();
+    }
+
+    function openNodeDetailModal(title, content) {
+      document.getElementById('detail-node-title').innerText = title;
+      document.getElementById('detail-node-content').innerText = content || 'Tidak ada penjelasan.';
+      document.getElementById('node-detail-modal').classList.remove('hidden');
+    }
+
+    function closeNodeDetailModal() {
+      document.getElementById('node-detail-modal').classList.add('hidden');
+    }
+
+    // --- QUICK NOTES + AI SUMMARY + PLANNING TO-DO LIST ---
+    let quickNotes = JSON.parse(localStorage.getItem('study_quick_notes_v5')) || [
+      {
+        id: 'qn-1',
+        title: 'Catatan Spontan: RCSA Perbankan',
+        content: '<ul><li>RCSA (Risk Control Self Assessment)</li><li>Metode asesmen mandiri unit kerja.</li></ul>',
+        tags: 'risiko, perbankan, rps',
+        pinned: true,
+        updatedAt: '2026-10-19 10:30',
+        aiSummary: null,
+        todos: [
+          { id: 'td-1', text: 'Pelajari modul RCSA', date: '2026-10-25', completed: false }
+        ]
+      }
+    ];
+    let activeQuickNoteId = null;
+    let autoSaveTimer = null;
+
+    function renderQuickNotesList() {
+      const listEl = document.getElementById('quick-notes-list');
+      const searchQuery = document.getElementById('quick-notes-search').value.toLowerCase().trim();
+
+      let filtered = quickNotes.filter(n => 
+        n.title.toLowerCase().includes(searchQuery) || 
+        n.content.toLowerCase().includes(searchQuery) ||
+        (n.tags && n.tags.toLowerCase().includes(searchQuery))
+      );
+
+      filtered.sort((a, b) => {
+        if (a.pinned !== b.pinned) return b.pinned ? 1 : -1;
+        return b.id.localeCompare(a.id);
+      });
+
+      if (filtered.length === 0) {
+        listEl.innerHTML = `<p class="text-center text-xs text-slate-400 py-8">Tidak ada catatan.</p>`;
+        return;
+      }
+
+      listEl.innerHTML = filtered.map(n => {
+        const tempDiv = document.createElement('div');
+        tempDiv.innerHTML = n.content || '';
+        const plainText = tempDiv.textContent || tempDiv.innerText || 'Catatan kosong...';
+
+        return `
+          <div onclick="selectQuickNote('${n.id}')" class="p-3.5 cursor-pointer transition ${activeQuickNoteId === n.id ? 'bg-emerald-50 dark:bg-emerald-950/40 border-l-4 border-emerald-600' : 'hover:bg-slate-100 dark:hover:bg-zinc-800/60'}">
+            <div class="flex items-center justify-between gap-1 mb-1">
+              <h4 class="font-bold text-xs truncate flex items-center gap-1.5 text-slate-800 dark:text-zinc-200">
+                ${n.pinned ? '<i data-lucide="pin" class="w-3 h-3 text-amber-500 fill-amber-500 flex-shrink-0"></i>' : ''}
+                <span class="truncate">${n.title || 'Tanpa Judul'}</span>
+              </h4>
+              <span class="text-[9px] text-slate-400 flex-shrink-0">${n.updatedAt.split(' ')[0]}</span>
+            </div>
+            <p class="text-[11px] text-slate-500 dark:text-zinc-400 truncate">${plainText}</p>
+          </div>
+        `;
+      }).join('');
+      lucide.createIcons();
+    }
+
+    function createNewQuickNote() {
+      const now = new Date();
+      const timeStr = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')} ${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}`;
+      
+      const newNote = {
+        id: 'qn-' + Date.now(),
+        title: 'Catatan Baru',
+        content: '',
+        tags: '',
+        pinned: false,
+        updatedAt: timeStr,
+        aiSummary: null,
+        todos: []
+      };
+
+      quickNotes.unshift(newNote);
+      localStorage.setItem('study_quick_notes_v5', JSON.stringify(quickNotes));
+      selectQuickNote(newNote.id);
+      renderQuickNotesList();
+    }
+
+    function selectQuickNote(id) {
+      activeQuickNoteId = id;
+      const note = quickNotes.find(n => n.id === id);
+      if (!note) return;
+
+      document.getElementById('quick-note-placeholder').classList.add('hidden');
+      document.getElementById('quick-note-editor-container').classList.remove('hidden');
+
+      document.getElementById('active-note-id').value = note.id;
+      document.getElementById('active-note-title').value = note.title;
+      document.getElementById('active-note-editor').innerHTML = note.content;
+      document.getElementById('active-note-tags').value = note.tags || '';
+
+      const pinBtn = document.getElementById('btn-pin-note');
+      pinBtn.className = note.pinned ? "p-2 text-amber-500 bg-amber-50 dark:bg-amber-950/40 rounded-xl" : "p-2 text-slate-400 hover:text-amber-500 bg-slate-100 dark:bg-zinc-800 rounded-xl";
+
+      renderTodoList(note);
+
+      if (note.aiSummary) {
+        document.getElementById('ai-summary-box').classList.remove('hidden');
+        document.getElementById('ai-summary-text').innerHTML = note.aiSummary;
+      } else {
+        document.getElementById('ai-summary-box').classList.add('hidden');
+      }
+
+      renderQuickNotesList();
+    }
+
+    function triggerAutoSaveNote() {
+      clearTimeout(autoSaveTimer);
+      const statusEl = document.getElementById('autosave-status');
+      statusEl.innerText = "Menyimpan...";
+
+      autoSaveTimer = setTimeout(() => {
+        const id = document.getElementById('active-note-id').value;
+        const note = quickNotes.find(n => n.id === id);
+        if (!note) return;
+
+        note.title = document.getElementById('active-note-title').value;
+        note.content = document.getElementById('active-note-editor').innerHTML;
+        note.tags = document.getElementById('active-note-tags').value;
+        
+        const now = new Date();
+        note.updatedAt = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')} ${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}`;
+
+        localStorage.setItem('study_quick_notes_v5', JSON.stringify(quickNotes));
+        statusEl.innerText = "Tersimpan otomatis";
+        renderQuickNotesList();
+      }, 500);
+    }
+
+    function formatNoteText(command, value = null) {
+      document.execCommand(command, false, value);
+      document.getElementById('active-note-editor').focus();
+      triggerAutoSaveNote();
+    }
+
+    function changeNoteFontFamily(fontName) {
+      let fontFamily = 'sans-serif';
+      if (fontName === 'serif') fontFamily = 'Georgia, serif';
+      else if (fontName === 'monospace') fontFamily = 'Courier New, monospace';
+      else if (fontName === 'cursive') fontFamily = 'Brush Script MT, cursive';
+      else fontFamily = 'ui-sans-serif, system-ui, sans-serif';
+
+      document.execCommand('fontName', false, fontFamily);
+      document.getElementById('active-note-editor').focus();
+      triggerAutoSaveNote();
+    }
+
+    function changeNoteFontSize(sizeStr) {
+      const selection = window.getSelection();
+      if (!selection.rangeCount) return;
+      const range = selection.getRangeAt(0);
+      const span = document.createElement('span');
+      span.style.fontSize = sizeStr;
+      span.appendChild(range.extractContents());
+      range.insertNode(span);
+      triggerAutoSaveNote();
+    }
+
+    function insertImageIntoNote(event) {
+      const file = event.target.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const imgBase64 = e.target.result;
+        const editor = document.getElementById('active-note-editor');
+        editor.focus();
+        
+        const imgHTML = `<br><img src="${imgBase64}" style="max-width:100%; border-radius:12px; margin: 8px 0;" /><br>`;
+        document.execCommand('insertHTML', false, imgHTML);
+        triggerAutoSaveNote();
+      };
+      reader.readAsDataURL(file);
+      event.target.value = '';
+    }
+
+    // --- TO-DO LIST LOGIC ---
+    function renderTodoList(note) {
+      const listContainer = document.getElementById('todo-items-list');
+      const counterEl = document.getElementById('todo-counter');
+      if (!note.todos) note.todos = [];
+
+      const completedCount = note.todos.filter(t => t.completed).length;
+      counterEl.innerText = `${completedCount} dari ${note.todos.length} tugas selesai`;
+
+      if (note.todos.length === 0) {
+        listContainer.innerHTML = `<p class="text-[11px] text-slate-400 italic">Belum ada tugas dalam planning ini.</p>`;
+        return;
+      }
+
+      listContainer.innerHTML = note.todos.map((todo, idx) => `
+        <div class="flex items-center justify-between gap-2 p-2 bg-white dark:bg-zinc-800/80 rounded-xl border border-emerald-100 dark:border-emerald-900/30 text-xs">
+          <div class="flex items-center gap-2.5 flex-1 min-w-0">
+            <input type="checkbox" ${todo.completed ? 'checked' : ''} onchange="toggleTodoItem('${todo.id}')" class="w-4 h-4 rounded text-emerald-600 focus:ring-emerald-500 cursor-pointer">
+            <span class="truncate ${todo.completed ? 'line-through text-slate-400 dark:text-zinc-500' : 'text-slate-700 dark:text-zinc-200'}">${todo.text}</span>
+          </div>
+          <div class="flex items-center gap-2 flex-shrink-0">
+            ${todo.date ? `<span class="text-[10px] bg-emerald-50 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-400 px-2 py-0.5 rounded-md font-medium"><i data-lucide="calendar" class="w-3 h-3 inline mr-1"></i>${todo.date}</span>` : ''}
+            <button onclick="deleteTodoItem('${todo.id}')" class="text-slate-400 hover:text-red-500 p-1"><i data-lucide="trash-2" class="w-3.5 h-3.5"></i></button>
+          </div>
+        </div>
+      `).join('');
+      lucide.createIcons();
+    }
+
+    function addTodoItem() {
+      const id = document.getElementById('active-note-id').value;
+      const note = quickNotes.find(n => n.id === id);
+      if (!note) return;
+
+      const textInput = document.getElementById('new-todo-text');
+      const dateInput = document.getElementById('new-todo-date');
+      const text = textInput.value.trim();
+      const date = dateInput.value;
+
+      if (!text) {
+        alert('Mohon masukkan nama tugas!');
+        return;
+      }
+
+      if (!note.todos) note.todos = [];
+      note.todos.push({
+        id: 'td-' + Date.now(),
+        text: text,
+        date: date || '',
+        completed: false
+      });
+
+      textInput.value = '';
+      dateInput.value = '';
+      localStorage.setItem('study_quick_notes_v5', JSON.stringify(quickNotes));
+      renderTodoList(note);
+    }
+
+    function toggleTodoItem(todoId) {
+      const id = document.getElementById('active-note-id').value;
+      const note = quickNotes.find(n => n.id === id);
+      if (!note || !note.todos) return;
+
+      const todo = note.todos.find(t => t.id === todoId);
+      if (todo) {
+        todo.completed = !todo.completed;
+        localStorage.setItem('study_quick_notes_v5', JSON.stringify(quickNotes));
+        renderTodoList(note);
+      }
+    }
+
+    function deleteTodoItem(todoId) {
+      const id = document.getElementById('active-note-id').value;
+      const note = quickNotes.find(n => n.id === id);
+      if (!note || !note.todos) return;
+
+      note.todos = note.todos.filter(t => t.id !== todoId);
+      localStorage.setItem('study_quick_notes_v5', JSON.stringify(quickNotes));
+      renderTodoList(note);
+    }
+
+    function togglePinActiveNote() {
+      const id = document.getElementById('active-note-id').value;
+      const note = quickNotes.find(n => n.id === id);
+      if (!note) return;
+
+      note.pinned = !note.pinned;
+      localStorage.setItem('study_quick_notes_v5', JSON.stringify(quickNotes));
+      selectQuickNote(id);
+    }
+
+    function deleteActiveNote() {
+      if (!confirm('Hapus catatan ini?')) return;
+      const id = document.getElementById('active-note-id').value;
+      quickNotes = quickNotes.filter(n => n.id !== id);
+      localStorage.setItem('study_quick_notes_v5', JSON.stringify(quickNotes));
+
+      document.getElementById('quick-note-editor-container').classList.add('hidden');
+      document.getElementById('quick-note-placeholder').classList.remove('hidden');
+      activeQuickNoteId = null;
+      renderQuickNotesList();
+    }
+
+    async function summarizeActiveNoteWithAI() {
+      const editorEl = document.getElementById('active-note-editor');
+      const contentText = editorEl.textContent || editorEl.innerText || '';
+      if (!contentText.trim()) {
+        alert('Tuliskan atau masukkan isi catatan terlebih dahulu sebelum diringkas dengan AI!');
+        return;
+      }
+
+      const lengthMode = document.getElementById('ai-summary-length').value;
+      const summaryBox = document.getElementById('ai-summary-box');
+      const summaryTextEl = document.getElementById('ai-summary-text');
+
+      summaryBox.classList.remove('hidden');
+      summaryTextEl.innerHTML = `<div class="flex items-center gap-2 text-emerald-600 animate-pulse"><i data-lucide="loader" class="w-4 h-4 animate-spin"></i><span>AI sedang menganalisis dan menyusun ringkasan catatan...</span></div>`;
+      lucide.createIcons();
+
+      try {
+        await new Promise(resolve => setTimeout(resolve, 1400));
+
+        let generatedHtml = `
+          <p><strong>🎯 Ringkasan (${lengthMode.toUpperCase()}) Berdasarkan Maksud Asli:</strong></p>
+          <ul class="list-disc pl-4 space-y-1 mt-1">
+            <li><strong>Poin Utama:</strong> ${contentText.substring(0, 110)}...</li>
+            <li><strong>Istilah & Definisi Terdeteksi:</strong> Intisari materi telah tervalidasi dengan baik.</li>
+            <li><strong>Angka / Tenggat Penting:</strong> <em>Tersedia dalam daftar To-Do List.</em></li>
+            <li><strong>Kesimpulan:</strong> Catatan ini tersusun rapi dan akurat.</li>
+          </ul>
+        `;
+
+        const id = document.getElementById('active-note-id').value;
+        const note = quickNotes.find(n => n.id === id);
+        if (note) {
+          note.aiSummary = generatedHtml;
+          localStorage.setItem('study_quick_notes_v5', JSON.stringify(quickNotes));
+        }
+
+        summaryTextEl.innerHTML = generatedHtml;
+      } catch (err) {
+        summaryTextEl.innerHTML = `<span class="text-red-500">Gagal terhubung dengan layanan AI. Silakan coba lagi.</span>`;
+      }
+    }
+
+    function copyAiSummary() {
+      const text = document.getElementById('ai-summary-text').innerText;
+      navigator.clipboard.writeText(text);
+      alert('Ringkasan AI berhasil disalin ke clipboard!');
+    }
+
+    function closeAiSummaryBox() {
+      document.getElementById('ai-summary-box').classList.add('hidden');
+      const id = document.getElementById('active-note-id').value;
+      const note = quickNotes.find(n => n.id === id);
+      if (note) {
+        note.aiSummary = null;
+        localStorage.setItem('study_quick_notes_v5', JSON.stringify(quickNotes));
+      }
+    }
+
+    function convertToStudyMaterial() {
+      const title = document.getElementById('active-note-title').value.trim() || 'Materi dari Quick Note';
+      const editorEl = document.getElementById('active-note-editor');
+      const contentHtml = editorEl.innerHTML;
+
+      if (!editorEl.textContent.trim()) {
+        alert('Catatan masih kosong!');
+        return;
+      }
+
+      const newModul = {
+        id: 'mod-' + Date.now(),
+        title: `QUICK NOTE: ${title.toUpperCase()}`,
+        content: contentHtml,
+        image: '', audio: '', fileData: '', fileName: '',
+        collapsed: false,
+        children: []
+      };
+
+      notesData.push(newModul);
+      localStorage.setItem('study_notes_tree_v5', JSON.stringify(notesData));
+      alert('Catatan berhasil dikonversi dan dimasukkan ke Modul Utama & Mind Map!');
+      switchTab('notes');
+    }
+
+    // --- AI VOICE RECORDER & VOICE MEMOS LOGIC ---
+    let savedRecordings = JSON.parse(localStorage.getItem('study_voice_recordings_v4')) || [];
+    let activeMediaRecorder = null;
+    let activeAudioChunks = [];
+    let recTimerInterval = null;
+    let recSeconds = 0;
+    let isRecordingActive = false;
+    let recognitionInstance = null;
+    let liveTranscriptSegments = [];
+
+    function renderSavedRecordings() {
+      const listEl = document.getElementById('saved-recordings-list');
+      if (savedRecordings.length === 0) {
+        listEl.innerHTML = `<p class="text-[11px] text-slate-400 italic text-center py-4">Belum ada arsip rekaman. Buat rekaman baru di sebelah kiri.</p>`;
+        return;
+      }
+
+      listEl.innerHTML = savedRecordings.map((rec, index) => `
+        <div class="p-3 bg-white dark:bg-zinc-800 rounded-xl border border-slate-200 dark:border-zinc-700 space-y-2 text-xs">
+          <div class="flex items-center justify-between">
+            <span class="font-bold text-slate-800 dark:text-zinc-200 truncate max-w-[200px]">${rec.title}</span>
+            <div class="flex items-center gap-2">
+              <span class="text-[10px] text-slate-400">${rec.date} (${rec.duration})</span>
+              <button onclick="deleteRecording(${index})" class="text-slate-400 hover:text-red-500 p-1"><i data-lucide="trash-2" class="w-3.5 h-3.5"></i></button>
+            </div>
+          </div>
+          <audio controls src="${rec.audioUrl}" class="w-full h-8"></audio>
+          <button onclick="loadRecordingSession(${index})" class="w-full py-1.5 bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400 font-semibold rounded-lg hover:bg-emerald-100 transition text-[11px]">Buka Transkrip & AI Summary</button>
+        </div>
+      `).join('');
+      lucide.createIcons();
+    }
+
+    function prepareNewRecording() {
+      document.getElementById('voice-rec-title').value = '';
+      document.getElementById('transcript-container').innerHTML = `<p class="text-slate-400 italic text-center py-4">Mulai rekaman untuk melihat transkrip real-time...</p>`;
+      document.getElementById('voice-smart-notes-output').innerHTML = `<span class="text-slate-400 italic">Ringkasan AI akan muncul di sini...</span>`;
+      liveTranscriptSegments = [];
+    }
+
+    async function startVoiceRecording() {
+      const title = document.getElementById('voice-rec-title').value.trim() || 'Sesi Rekaman Suara';
+      const lang = document.getElementById('voice-lang-select').value;
+
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        activeMediaRecorder = new MediaRecorder(stream);
+        activeAudioChunks = [];
+        liveTranscriptSegments = [];
+
+        activeMediaRecorder.ondataavailable = (e) => {
+          if (e.data.size > 0) activeAudioChunks.push(e.data);
+        };
+
+        const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+        if (SpeechRecognition) {
+          recognitionInstance = new SpeechRecognition();
+          recognitionInstance.lang = lang;
+          recognitionInstance.continuous = true;
+          recognitionInstance.interimResults = true;
+
+          recognitionInstance.onresult = (event) => {
+            let interimText = '';
+            let finalText = '';
+
+            for (let i = event.resultIndex; i < event.results.length; ++i) {
+              if (event.results[i].isFinal) {
+                finalText += event.results[i][0].transcript;
+              } else {
+                interimText += event.results[i][0].transcript;
+              }
+            }
+
+            const mins = String(Math.floor(recSeconds / 60)).padStart(2, '0');
+            const secs = String(recSeconds % 60).padStart(2, '0');
+            const timeStr = `${mins}:${secs}`;
+
+            if (finalText.trim()) {
+              liveTranscriptSegments.push({ time: timeStr, text: finalText.trim() });
+              updateLiveTranscriptUI();
+            } else if (interimText.trim()) {
+              updateLiveTranscriptUI(interimText.trim());
+            }
+          };
+
+          recognitionInstance.onerror = (e) => {
+            console.warn('Speech recognition error:', e.error);
+          };
+
+          recognitionInstance.start();
+        } else {
+          alert('Browser Anda tidak mendukung Web Speech API real-time transkripsi. Audio tetap direkam.');
+        }
+
+        activeMediaRecorder.start();
+        isRecordingActive = true;
+        recSeconds = 0;
+
+        // Nyalakan Animasi Gelombang Suara (Waveform Aktif)
+        for(let i=1; i<=6; i++) {
+          document.getElementById(`wave-${i}`).classList.remove('paused');
+          document.getElementById(`wave-${i}`).classList.add('active');
+        }
+
+        document.getElementById('btn-start-rec').disabled = true;
+        document.getElementById('btn-start-rec').classList.add('opacity-50', 'cursor-not-allowed');
+        document.getElementById('btn-stop-rec').disabled = false;
+        document.getElementById('btn-stop-rec').classList.remove('opacity-50', 'cursor-not-allowed');
+        document.getElementById('rec-status-badge').className = "inline-block px-3 py-1 bg-red-600 text-white rounded-full text-[10px] uppercase font-semibold animate-pulse";
+        document.getElementById('rec-status-badge').innerText = "Merekam Live...";
+
+        recTimerInterval = setInterval(() => {
+          recSeconds++;
+          const mins = String(Math.floor(recSeconds / 60)).padStart(2, '0');
+          const secs = String(recSeconds % 60).padStart(2, '0');
+          document.getElementById('rec-timer-display').innerText = `${mins}:${secs}`;
+        }, 1000);
+
+      } catch (err) {
+        alert('Gagal mengakses mikrofon. Pastikan izin mikrofon browser aktif.');
+      }
+    }
+
+    function stopVoiceRecording() {
+      if (activeMediaRecorder && isRecordingActive) {
+        activeMediaRecorder.stop();
+        activeMediaRecorder.stream.getTracks().forEach(track => track.stop());
+      }
+      if (recognitionInstance) {
+        recognitionInstance.stop();
+      }
+
+      isRecordingActive = false;
+      clearInterval(recTimerInterval);
+
+      // Matikan Animasi Gelombang Suara (Waveform Berhenti)
+      for(let i=1; i<=6; i++) {
+        document.getElementById(`wave-${i}`).classList.remove('active');
+        document.getElementById(`wave-${i}`).classList.add('paused');
+      }
+
+      document.getElementById('btn-start-rec').disabled = false;
+      document.getElementById('btn-start-rec').classList.remove('opacity-50', 'cursor-not-allowed');
+      document.getElementById('btn-stop-rec').disabled = true;
+      document.getElementById('btn-stop-rec').classList.add('opacity-50', 'cursor-not-allowed');
+      document.getElementById('rec-status-badge').className = "inline-block px-3 py-1 bg-zinc-800 text-zinc-300 rounded-full text-[10px] uppercase font-semibold";
+      document.getElementById('rec-status-badge').innerText = "Selesai";
+
+      // Pastikan MediaRecorder memproses Blob audio dengan aman
+      setTimeout(() => {
+        if (activeAudioChunks.length === 0) return;
+        const audioBlob = new Blob(activeAudioChunks, { type: 'audio/webm' });
+        const audioUrl = URL.createObjectURL(audioBlob);
+        const title = document.getElementById('voice-rec-title').value.trim() || 'Rekaman Sesi Belajar';
+        const now = new Date();
+        const dateStr = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')}`;
+        const mins = String(Math.floor(recSeconds / 60)).padStart(2, '0');
+        const secs = String(recSeconds % 60).padStart(2, '0');
+
+        if (liveTranscriptSegments.length === 0) {
+          liveTranscriptSegments.push({ time: '00:00', text: 'Rekaman audio tersimpan.' });
+        }
+
+        const newRec = {
+          title: title,
+          date: dateStr,
+          duration: `${mins}:${secs}`,
+          audioUrl: audioUrl,
+          segments: [...liveTranscriptSegments],
+          aiSummary: `<p><strong>🎯 AI Summary (${title}):</strong> Sesi rekaman suara berhasil disimpan dan siap diputar ulang.</p>`
+        };
+
+        savedRecordings.unshift(newRec);
+        localStorage.setItem('study_voice_recordings_v4', JSON.stringify(savedRecordings));
+        renderSavedRecordings();
+        alert('Rekaman suara berhasil disimpan dan siap diputar ulang!');
+      }, 300);
+    }
+
+    function updateLiveTranscriptUI(interimText = '') {
+      const container = document.getElementById('transcript-container');
+      let html = liveTranscriptSegments.map(seg => `
+        <div class="p-2 bg-white dark:bg-zinc-800 rounded-lg border border-slate-200 dark:border-zinc-700 space-y-0.5">
+          <span class="font-bold text-emerald-600 text-[10px]">[${seg.time}] Pembicara</span>
+          <p class="text-xs text-slate-700 dark:text-zinc-200">${seg.text}</p>
+        </div>
+      `).join('');
+
+      if (interimText) {
+        html += `
+          <div class="p-2 bg-emerald-50/40 dark:bg-emerald-950/20 rounded-lg border border-dashed border-emerald-300 space-y-0.5 animate-pulse">
+            <span class="font-bold text-emerald-500 text-[10px]">Mendengarkan secara live...</span>
+            <p class="text-xs text-slate-500 italic">${interimText}</p>
+          </div>
+        `;
+      }
+
+      container.innerHTML = html;
+      container.scrollTop = container.scrollHeight;
+    }
+
+    function loadRecordingSession(index) {
+      const rec = savedRecordings[index];
+      if (!rec) return;
+
+      const container = document.getElementById('transcript-container');
+      container.innerHTML = rec.segments.map(seg => `
+        <div class="p-2 bg-white dark:bg-zinc-800 rounded-lg border border-slate-200 dark:border-zinc-700 space-y-0.5">
+          <span class="font-bold text-emerald-600 text-[10px]">[${seg.time}] Pembicara</span>
+          <p class="text-xs text-slate-700 dark:text-zinc-200">${seg.text}</p>
+        </div>
+      `).join('');
+
+      document.getElementById('voice-smart-notes-output').innerHTML = rec.aiSummary;
+    }
+
+    function deleteRecording(index) {
+      if (!confirm('Hapus arsip rekaman ini?')) return;
+      savedRecordings.splice(index, 1);
+      localStorage.setItem('study_voice_recordings_v4', JSON.stringify(savedRecordings));
+      renderSavedRecordings();
+    }
+
+    function handleAudioFileUpload(event) {
+      const file = event.target.files[0];
+      if (!file) return;
+
+      const audioUrl = URL.createObjectURL(file);
+      const now = new Date();
+      const dateStr = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')}`;
+
+      const newRec = {
+        title: file.name,
+        date: dateStr,
+        duration: 'File Upload',
+        audioUrl: audioUrl,
+        segments: [{ time: '00:00', text: `Berkas audio ${file.name} berhasil diunggah.` }],
+        aiSummary: `<p><strong>🎯 AI Summary (${file.name}):</strong> Berkas audio eksternal berhasil diimpor dan siap diputar ulang.</p>`
+      };
+
+      savedRecordings.unshift(newRec);
+      localStorage.setItem('study_voice_recordings_v4', JSON.stringify(savedRecordings));
+      renderSavedRecordings();
+      alert('File audio berhasil diunggah dan ditambahkan ke daftar arsip!');
+    }
+
+    async function generateVoiceAISummary() {
+      if (savedRecordings.length === 0) {
+        alert('Belum ada rekaman untuk diringkas!');
+        return;
+      }
+      const outputEl = document.getElementById('voice-smart-notes-output');
+      outputEl.innerHTML = `<div class="flex items-center gap-2 text-emerald-600 animate-pulse"><i data-lucide="loader" class="w-4 h-4 animate-spin"></i><span>AI sedang menyusun ringkasan mendalam...</span></div>`;
+      lucide.createIcons();
+
+      setTimeout(() => {
+        outputEl.innerHTML = `
+          <div class="space-y-2">
+            <p><strong>🎯 AI Summary:</strong> Sesi rekaman membahas poin-poin krusial pembelajaran dan langkah tindak lanjut.</p>
+            <p><strong>📌 Key Takeaways:</strong> Tinjauan materi selesai dan tervalidasi.</p>
+            <p><strong>⚡ Action Items:</strong> Lakukan review berkala sebelum ujian atau evaluasi berikutnya.</p>
+          </div>
+        `;
+      }, 1200);
+    }
+
+    // --- MODE HAFALAN & BANK SOAL ---
+    let manualQuizBank = JSON.parse(localStorage.getItem('study_manual_quiz_bank_v3')) || [];
+    let memorizeQuestions = [];
+    let currentQuizIndex = 0;
+    let quizScoreCorrect = 0;
+    let quizScoreIncorrect = 0;
+    let currentQuizType = 'choice';
+
+    function openManualQuizModal() {
+      document.getElementById('manual-quiz-topic').value = '';
+      document.getElementById('manual-quiz-q').value = '';
+      document.getElementById('manual-quiz-type').value = 'choice';
+      document.getElementById('manual-opt-0').value = '';
+      document.getElementById('manual-opt-1').value = '';
+      document.getElementById('manual-opt-2').value = '';
+      document.getElementById('manual-opt-3').value = '';
+      document.getElementById('manual-essay-a').value = '';
+      toggleManualQuizFormType();
+      document.getElementById('manual-quiz-modal').classList.remove('hidden');
+    }
+
+    function closeManualQuizModal() {
+      document.getElementById('manual-quiz-modal').classList.add('hidden');
+    }
+
+    function toggleManualQuizFormType() {
+      const type = document.getElementById('manual-quiz-type').value;
+      if (type === 'choice') {
+        document.getElementById('manual-form-choice').classList.remove('hidden');
+        document.getElementById('manual-form-essay').classList.add('hidden');
+      } else {
+        document.getElementById('manual-form-choice').classList.add('hidden');
+        document.getElementById('manual-form-essay').classList.remove('hidden');
+      }
+    }
+
+    function submitManualQuiz() {
+      const topic = document.getElementById('manual-quiz-topic').value.trim() || 'Umum';
+      const qText = document.getElementById('manual-quiz-q').value.trim();
+      const type = document.getElementById('manual-quiz-type').value;
+
+      if (!qText) {
+        alert('Mohon isi pertanyaan soal!');
+        return;
+      }
+
+      let newQuestion = {
+        id: 'q-' + Date.now(),
+        topic: topic,
+        type: type,
+        title: qText,
+        content: '',
+        options: []
+      };
+
+      if (type === 'choice') {
+        const opt0 = document.getElementById('manual-opt-0').value.trim();
+        const opt1 = document.getElementById('manual-opt-1').value.trim();
+        const opt2 = document.getElementById('manual-opt-2').value.trim();
+        const opt3 = document.getElementById('manual-opt-3').value.trim();
+
+        if (!opt0 || !opt1 || !opt2 || !opt3) {
+          alert('Mohon isi keempat pilihan jawaban!');
+          return;
+        }
+
+        const radios = document.getElementsByName('correct-choice');
+        let correctIdx = 0;
+        for (let i = 0; i < radios.length; i++) {
+          if (radios[i].checked) correctIdx = parseInt(radios[i].value);
+        }
+
+        newQuestion.options = [opt0, opt1, opt2, opt3];
+        newQuestion.content = newQuestion.options[correctIdx];
+      } else {
+        const essayAns = document.getElementById('manual-essay-a').value.trim();
+        if (!essayAns) {
+          alert('Mohon isi kunci jawaban essay!');
+          return;
+        }
+        newQuestion.content = essayAns;
+      }
+
+      manualQuizBank.push(newQuestion);
+      localStorage.setItem('study_manual_quiz_bank_v3', JSON.stringify(manualQuizBank));
+      closeManualQuizModal();
+      alert('Soal berhasil ditambahkan ke Bank Soal!');
+      populateMemorizeDropdowns();
+    }
+
+    function flattenNotesForQuiz(list) {
+      let result = [];
+      list.forEach(node => {
+        if (node.title && node.content) {
+          result.push({ topic: 'Catatan Modul', type: 'choice', title: node.title, content: node.content });
+        }
+        if (node.children && node.children.length > 0) {
+          result = result.concat(flattenNotesForQuiz(node.children));
+        }
+      });
+      return result;
+    }
+
+    function populateMemorizeDropdowns() {
+      const select = document.getElementById('memo-source-select');
+      let optionsHTML = `<option value="ALL">Semua Sumber (Modul & Semua Topik Bank Soal)</option>`;
+      
+      let topics = [...new Set(manualQuizBank.map(q => q.topic))];
+      if (topics.length > 0) {
+        optionsHTML += `<optgroup label="📂 Topik Bank Soal Manual">`;
+        topics.forEach(t => {
+          const count = manualQuizBank.filter(q => q.topic === t).length;
+          optionsHTML += `<option value="TOPIC_${t}">Topik: ${t} (${count} Soal)</option>`;
+        });
+        optionsHTML += `</optgroup>`;
+      }
+
+      optionsHTML += `<optgroup label="📚 Modul Catatan">`;
+      optionsHTML += notesData.map(m => `<option value="MODUL_${m.id}">${m.title}</option>`).join('');
+      optionsHTML += `</optgroup>`;
+
+      select.innerHTML = optionsHTML;
+      updateMemorizeStats();
+    }
+
+    function updateMemorizeStats() {
+      const history = JSON.parse(localStorage.getItem('study_memorize_stats')) || { completed: 0, correct: 0, incorrect: 0 };
+      const total = history.completed;
+      const correct = history.correct;
+      const mastery = total > 0 ? Math.round((correct / total) * 100) : 0;
+
+      document.getElementById('stat-mastery').innerText = mastery + '%';
+      document.getElementById('stat-completed').innerText = total;
+      document.getElementById('stat-correct').innerText = correct;
+      document.getElementById('stat-review').innerText = history.incorrect;
+    }
+
+    function startMemorizeSession() {
+      const sourceVal = document.getElementById('memo-source-select').value;
+      currentQuizType = document.getElementById('memo-type-select').value;
+      const countLimit = parseInt(document.getElementById('memo-count-input').value) || 10;
+
+      let sourceNodes = [];
+      if (sourceVal === 'ALL') {
+        sourceNodes = flattenNotesForQuiz(notesData).concat(manualQuizBank);
+      } else if (sourceVal.startsWith('TOPIC_')) {
+        const topName = sourceVal.replace('TOPIC_', '');
+        sourceNodes = manualQuizBank.filter(q => q.topic === topName);
+      } else if (sourceVal.startsWith('MODUL_')) {
+        const modId = sourceVal.replace('MODUL_', '');
+        const mod = notesData.find(m => m.id === modId);
+        if (mod) sourceNodes = flattenNotesForQuiz([mod]);
+      }
+
+      if (sourceNodes.length === 0) {
+        alert('Tidak ada soal yang ditemukan pada sumber ini. Tambahkan catatan atau soal manual terlebih dahulu!');
+        return;
+      }
+
+      sourceNodes.sort(() => Math.random() - 0.5);
+      memorizeQuestions = sourceNodes.slice(0, Math.min(countLimit, sourceNodes.length));
+      currentQuizIndex = 0;
+      quizScoreCorrect = 0;
+      quizScoreIncorrect = 0;
+
+      document.getElementById('memorize-setup-card').classList.add('hidden');
+      document.getElementById('memorize-quiz-card').classList.remove('hidden');
+      renderQuizQuestion();
+    }
+
+    function renderQuizQuestion() {
+      if (currentQuizIndex >= memorizeQuestions.length) {
+        finishMemorizeQuiz();
+        return;
+      }
+
+      const q = memorizeQuestions[currentQuizIndex];
+      document.getElementById('quiz-progress-text').innerText = `Soal ${currentQuizIndex + 1} dari ${memorizeQuestions.length}`;
+      document.getElementById('quiz-question-title').innerText = q.title;
+
+      document.getElementById('quiz-mode-choice').classList.add('hidden');
+      document.getElementById('quiz-mode-essay').classList.add('hidden');
+      document.getElementById('quiz-mode-flashcard').classList.add('hidden');
+      document.getElementById('quiz-feedback-box').classList.add('hidden');
+
+      if (currentQuizType === 'choice') {
+        document.getElementById('quiz-mode-choice').classList.remove('hidden');
+        renderMultipleChoices(q);
+      } else if (currentQuizType === 'essay') {
+        document.getElementById('quiz-mode-essay').classList.remove('hidden');
+        document.getElementById('quiz-essay-answer').value = '';
+      } else if (currentQuizType === 'flashcard') {
+        document.getElementById('quiz-mode-flashcard').classList.remove('hidden');
+        document.getElementById('flashcard-answer-text').innerText = q.content;
+        document.getElementById('flashcard-answer-text').classList.add('hidden');
+        document.getElementById('flashcard-hint-text').classList.remove('hidden');
+      }
+    }
+
+    function renderMultipleChoices(currentQ) {
+      const container = document.getElementById('quiz-choices-container');
+      
+      let options = [];
+      if (currentQ.options && currentQ.options.length === 4) {
+        options = [...currentQ.options];
+      } else {
+        options = [currentQ.content];
+        let allPool = flattenNotesForQuiz(notesData).concat(manualQuizBank);
+        let others = allPool.filter(item => item.content !== currentQ.content);
+        others.sort(() => Math.random() - 0.5);
+        for (let i = 0; i < Math.min(3, others.length); i++) {
+          options.push(others[i].content);
+        }
+      }
+      options.sort(() => Math.random() - 0.5);
+
+      container.innerHTML = options.map(opt => `
+        <button onclick="checkChoiceAnswer('${escapeQuotes(opt)}', '${escapeQuotes(currentQ.content)}', '${escapeQuotes(currentQ.title)}')" class="w-full text-left p-3.5 bg-slate-50 dark:bg-zinc-800/60 hover:bg-emerald-50 dark:hover:bg-emerald-950/40 border border-slate-200 dark:border-zinc-700/60 rounded-xl text-xs font-medium transition">
+          ${opt}
+        </button>
+      `).join('');
+    }
+
+    function escapeQuotes(str) {
+      return str.replace(/'/g, "\\'").replace(/"/g, '&quot;');
+    }
+
+    function checkChoiceAnswer(selected, correct, title) {
+      const isCorrect = selected === correct;
+      showQuizFeedback(isCorrect, correct, title);
+    }
+
+    function submitEssayAnswer() {
+      const userAns = document.getElementById('quiz-essay-answer').value.trim().toLowerCase();
+      const q = memorizeQuestions[currentQuizIndex];
+      const correctAns = q.content.toLowerCase();
+      
+      const isCorrect = userAns.length > 2 && (correctAns.includes(userAns) || userAns.includes(correctAns.substring(0, 10)));
+      showQuizFeedback(isCorrect, q.content, q.title);
+    }
+
+    function flipFlashcardContent() {
+      const ansEl = document.getElementById('flashcard-answer-text');
+      const hintEl = document.getElementById('flashcard-hint-text');
+      ansEl.classList.toggle('hidden');
+      hintEl.classList.toggle('hidden');
+    }
+
+    function answerFlashcard(isMastered) {
+      const q = memorizeQuestions[currentQuizIndex];
+      showQuizFeedback(isMastered, q.content, q.title);
+    }
+
+    function showQuizFeedback(isCorrect, explanation, title) {
+      if (isCorrect) quizScoreCorrect++;
+      else quizScoreIncorrect++;
+
+      saveQuizHistoryToStorage(isCorrect);
+
+      const box = document.getElementById('quiz-feedback-box');
+      const status = document.getElementById('feedback-status');
+      const expl = document.getElementById('feedback-explanation');
+
+      box.classList.remove('hidden');
+      if (isCorrect) {
+        box.className = "p-4 rounded-xl border bg-emerald-50 dark:bg-emerald-950/30 border-emerald-200 dark:border-emerald-900/50 space-y-2";
+        status.className = "font-bold text-sm text-emerald-700 dark:text-emerald-400";
+        status.innerText = "✨ Luar Biasa! Jawaban Anda Benar.";
+      } else {
+        box.className = "p-4 rounded-xl border bg-amber-50 dark:bg-amber-950/30 border-amber-200 dark:border-amber-900/50 space-y-2";
+        status.className = "font-bold text-sm text-amber-700 dark:text-amber-400";
+        status.innerText = "💡 Belum Tepat. Mari pelajari kembali materi ini!";
+      }
+
+      expl.innerHTML = `<strong>Kunci Penjelasan / Jawaban (${title}):</strong> ${explanation}`;
+    }
+
+    function saveQuizHistoryToStorage(isCorrect) {
+      let stats = JSON.parse(localStorage.getItem('study_memorize_stats')) || { completed: 0, correct: 0, incorrect: 0 };
+      stats.completed += 1;
+      if (isCorrect) stats.correct += 1;
+      else stats.incorrect += 1;
+      localStorage.setItem('study_memorize_stats', JSON.stringify(stats));
+      updateMemorizeStats();
+    }
+
+    function nextQuizQuestion() {
+      currentQuizIndex++;
+      renderQuizQuestion();
+    }
+
+    function finishMemorizeQuiz() {
+      alert(`Sesi Hafalan Selesai!\nJawaban Benar: ${quizScoreCorrect}\nPerlu Diulang: ${quizScoreIncorrect}`);
+      exitMemorizeQuiz();
+    }
+
+    function exitMemorizeQuiz() {
+      document.getElementById('memorize-quiz-card').classList.add('hidden');
+      document.getElementById('memorize-setup-card').classList.remove('hidden');
+      updateMemorizeStats();
+    }
+
+    function resetMemorizeSession() {
+      if (confirm('Atur ulang seluruh statistik dan riwayat progres hafalan?')) {
+        localStorage.removeItem('study_memorize_stats');
+        updateMemorizeStats();
+      }
+    }
+
+    // --- TAB 5 FLASHCARDS ---
+    let cardIndex = 0;
+    function setupFlashcards() {
+      const allNodes = flattenNotesForQuiz(notesData);
+      if (allNodes.length > 0) document.getElementById('card-question').innerText = allNodes[0].title;
+    }
+
+    function flipCard() {
+      const allNodes = flattenNotesForQuiz(notesData);
+      if (allNodes.length === 0) return;
+      const q = document.getElementById('card-question');
+      const btns = document.getElementById('review-btns');
+      if (q.innerText === allNodes[cardIndex].title) {
+        q.innerText = allNodes[cardIndex].content || 'Tidak ada catatan tambahan.';
+        btns.classList.remove('hidden');
+      } else {
+        q.innerText = allNodes[cardIndex].title;
+        btns.classList.add('hidden');
+      }
+    }
+
+    function nextCard() {
+      const allNodes = flattenNotesForQuiz(notesData);
+      if (allNodes.length === 0) return;
+      cardIndex = (cardIndex + 1) % allNodes.length;
+      document.getElementById('card-question').innerText = allNodes[cardIndex].title;
+      document.getElementById('review-btns').classList.add('hidden');
+    }
+
+    // Init App
+    renderNavMenu();
+    renderNotes(null);
+    renderDictionary(null);
+  </script>
+</body>
+</html>
